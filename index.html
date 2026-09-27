@@ -124,6 +124,14 @@ body[data-view="library"] #contentsBtn,body[data-view="library"] #notesBtn,body[
 
 /* contents */
 .toc-label{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:8px 12px}
+.toc-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.toc-head .toc-label{margin:8px 12px}
+.toc-head .btn{min-height:38px;padding:0 10px;font-size:15px;color:var(--muted);gap:4px}
+@media (min-width:1180px){
+  body.toc-collapsed .read-wrap{grid-template-columns:minmax(0,1fr);max-width:1000px}
+  body.toc-collapsed .toc-col{display:none}
+  body.toc-collapsed #contentsBtn{display:inline-flex}
+}
 .toc-list{display:grid;gap:2px}
 .toc-list button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:10px;font-size:16px;line-height:1.3;color:var(--muted)}
 .toc-list button:hover{background:var(--chip);color:var(--ink)}
@@ -151,6 +159,13 @@ input[type=range]{width:100%;accent-color:var(--accent);height:26px;margin:0}
 .tool:hover{background:var(--chip)}
 .tool[aria-pressed="true"]{background:var(--hl);color:var(--ink)}
 .tool[aria-expanded="true"]{background:var(--chip);color:var(--ink)}
+.tool-pair{cursor:default;padding:4px 2px;flex:none}
+.tools>*{flex:none}
+.tool-pair:hover{background:transparent}
+.pair{display:flex;gap:2px}
+.mini{width:38px;height:32px;border:0;border-radius:10px;background:transparent;font-weight:700;font-size:16px;color:var(--ink);cursor:pointer;padding:0}
+.mini.big{font-size:20px}
+.mini:hover{background:var(--chip)}
 @media (max-width:720px){
   .player{padding-inline:8px}
   .player-in{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"where where" "trans tools";border-radius:20px;padding:10px}
@@ -165,6 +180,8 @@ input[type=range]{width:100%;accent-color:var(--accent);height:26px;margin:0}
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
 .field{display:grid;gap:6px;font-size:15px;color:var(--muted)}
 .field label,.field .lab{font-weight:700}
+.field .row .btn{flex:1 1 auto}
+#voiceStar[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
 .field output{color:var(--ink);font-variant-numeric:tabular-nums}
 #voice{height:46px;border-radius:12px;border:1.5px solid var(--line);background:var(--sheet);padding:0 10px;font-size:15px;width:100%}
 .opts{display:grid;gap:10px}
@@ -233,7 +250,12 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
   .hbtn{padding:0 8px;font-size:15px;gap:6px}
   .hbtn .i{display:none}
   #whereLeft{font-size:14px}
-  .tool{min-width:54px}
+  .tools{gap:6px}
+  .tool{min-width:40px;min-height:48px;padding:4px}
+  .tool-pair{padding:0;margin-inline:2px 6px;background:var(--chip);border-radius:12px}
+  .ic{width:42px}
+  .tl{display:none}
+  .mini{width:34px}
   .ic{width:44px;height:44px}.ic.play{width:58px;height:58px}
 }
 @media (prefers-reduced-motion: reduce){*{transition:none!important;scroll-behavior:auto!important}}
@@ -260,7 +282,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
 <main id="readerView">
   <div class="read-wrap">
     <nav class="toc-col" aria-label="Contents">
-      <p class="toc-label">Contents</p>
+      <div class="toc-head"><p class="toc-label">Contents</p><button class="btn quiet sm" id="tocHide" type="button" aria-label="Hide contents" title="Hide contents"><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Hide</button></div>
       <div class="toc-list"></div>
     </nav>
     <article class="sheet" id="sheet">
@@ -311,9 +333,10 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
       <input type="range" id="seek" min="0" max="0" value="0" step="1" aria-label="Position in the paper">
     </div>
     <div class="tools">
-      <button class="tool" id="hlBtn" aria-pressed="false" title="Highlight this sentence (H)"><svg class="i" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5L10 19H5v-5z"/><path d="M4 22h16"/></svg>Highlight</button>
-      <button class="tool" id="noteBtn" title="Add a note to this sentence (N)"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/><path d="M8.5 9h7"/></svg>Note</button>
-      <button class="tool" id="setBtn" aria-expanded="false" aria-controls="settings"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Settings</button>
+      <button class="tool" id="hlBtn" aria-label="Highlight" aria-pressed="false" title="Highlight this sentence (H)"><svg class="i" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5L10 19H5v-5z"/><path d="M4 22h16"/></svg><span class="tl">Highlight</span></button>
+      <button class="tool" id="noteBtn" aria-label="Note" title="Add a note to this sentence (N)"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/><path d="M8.5 9h7"/></svg><span class="tl">Note</span></button>
+      <div class="tool tool-pair" role="group" aria-label="Text size"><div class="pair"><button class="mini" id="pSmaller" aria-label="Smaller text" title="Smaller text">A−</button><button class="mini big" id="pBigger" aria-label="Larger text" title="Larger text">A+</button></div><span class="tl">Text size</span></div>
+      <button class="tool" id="setBtn" aria-label="Settings" aria-expanded="false" aria-controls="settings"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span class="tl">Settings</span></button>
     </div>
   </div>
 </div>
@@ -322,7 +345,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
   <h2>Listening settings</h2>
   <div class="fields">
     <div class="field"><label for="rate">Speed <output id="rateOut">1.0×</output></label><input type="range" id="rate" min="0.6" max="2.4" step="0.1" value="1"></div>
-    <div class="field"><label for="voice">Voice</label><select id="voice"></select><button class="btn sm" id="voiceTest" type="button">Test this voice</button></div>
+    <div class="field"><label for="voice">Voice</label><select id="voice"></select><div class="row"><button class="btn sm" id="voiceStar" type="button" aria-pressed="false">☆ Add to favorites</button><button class="btn sm quiet" id="voiceTest" type="button">Test this voice</button></div></div>
     <div class="field"><span class="lab" id="sizeLab">Text size <output id="sizeOut"></output></span><div class="row" role="group" aria-labelledby="sizeLab"><button class="btn sm" id="smaller" aria-label="Smaller text">A−</button><button class="btn sm" id="bigger" aria-label="Larger text">A+</button></div></div>
   </div>
   <p class="fine" id="voiceHint" hidden></p>
@@ -1089,7 +1112,7 @@ function niceVoice(v){return v?v.name.replace(/^Microsoft\s+/,'').replace(/\s+On
 function fallbackVoice(cur){
   const lang=(cur&&cur.lang||'en').slice(0,2);
   const pool=voices.filter(v=>v!==cur);
-  return pool.find(v=>v.localService&&v.lang.slice(0,2)===lang)||pool.find(v=>v.localService)||pool.find(v=>v.lang.slice(0,2)===lang)||null;
+  return pool.find(v=>favs.has(v.name)&&v.localService)||pool.find(v=>v.localService&&v.lang.slice(0,2)===lang)||pool.find(v=>v.localService)||pool.find(v=>v.lang.slice(0,2)===lang)||null;
 }
 function startSpeaking(){
   // speak straight from the click when nothing is queued; a cancel first needs a moment to settle
@@ -1325,7 +1348,13 @@ function closeDrawers(){
 }
 function openSettings(){closePop();closeDrawers();$('#settings').hidden=false;$('#setBtn').setAttribute('aria-expanded','true')}
 function closeSettings(){$('#settings').hidden=true;$('#setBtn').setAttribute('aria-expanded','false')}
-$('#contentsBtn').onclick=e=>openDrawer('contentsDrawer',e.currentTarget);
+function setToc(collapsed){document.body.classList.toggle('toc-collapsed',collapsed);store.set('pol-tocCollapsed',collapsed)}
+setToc(!!store.get('pol-tocCollapsed',false));
+$('#tocHide').onclick=()=>{setToc(true);$('#contentsBtn').focus()};
+$('#contentsBtn').onclick=e=>{
+  if(innerWidth>=1180&&document.body.classList.contains('toc-collapsed')){setToc(false);$('#tocHide').focus();return}
+  openDrawer('contentsDrawer',e.currentTarget);
+};
 $('#notesBtn').onclick=e=>openDrawer('notesDrawer',e.currentTarget);
 $('#scrim').onclick=closeDrawers;
 $$('.drawer-close').forEach(b=>b.onclick=closeDrawers);
@@ -1341,7 +1370,8 @@ $('#noteDialog').addEventListener('pointerdown',e=>{if(e.target.id==='noteDialog
 const saved=store.get('pol-settings',{});
 rate=saved.rate||1;Object.assign(opts,saved.opts||{});
 let fs=saved.fs||null;
-function saveSettings(){store.set('pol-settings',{rate,voice:voice&&voice.name,fs,opts})}
+let favs=new Set(saved.favs||[]);
+function saveSettings(){store.set('pol-settings',{rate,voice:voice&&voice.name,fs,opts,favs:[...favs]})}
 function voiceHint(){
   const h=$('#voiceHint');
   if(voices.some(v=>/natural|neural|premium|enhanced/i.test(v.name))){h.hidden=true;return}
@@ -1356,24 +1386,46 @@ function loadVoices(){
   if(!voices.length) return;
   const score=v=>(/natural|neural|premium|enhanced|online/i.test(v.name)?0:4)+(/^en/i.test(v.lang)?0:2)+(/^en-US/i.test(v.lang)?0:1);
   voices.sort((a,b)=>score(a)-score(b)||a.name.localeCompare(b.name));
-  const sel=$('#voice');sel.innerHTML='';
-  voices.forEach((v,i)=>{const o=el('option',null,v.name.replace(/^Microsoft\s+/,'').replace(/\s+Online\s+\(Natural\)/,' (Natural)')+' · '+v.lang);o.value=i;sel.append(o)});
-  let i=voices.findIndex(v=>v.name===saved.voice);if(i<0)i=0;
-  voice=voices[i];sel.value=i;
+  // default voice: Leah (South Africa) when this device has it
+  let i=voices.findIndex(v=>v.name===saved.voice);
+  if(i<0) i=voices.findIndex(v=>/\bLeah\b/i.test(v.name)&&/en-ZA/i.test(v.lang));
+  if(i<0) i=0;
+  voice=voices[i];
+  renderVoiceSelect();
   voiceHint();
+}
+function voiceLabel(v){return v.name.replace(/^Microsoft\s+/,'').replace(/\s+Online\s+\(Natural\)/,' (Natural)').replace(/\s+-\s+/,' · ')}
+function renderVoiceSelect(){
+  const sel=$('#voice');sel.innerHTML='';
+  const add=(parent,v)=>{const o=el('option',null,(favs.has(v.name)?'★ ':'')+voiceLabel(v));o.value=voices.indexOf(v);parent.append(o)};
+  const fav=voices.filter(v=>favs.has(v.name));
+  if(fav.length){
+    const g1=document.createElement('optgroup');g1.label='Favorites';fav.forEach(v=>add(g1,v));
+    const g2=document.createElement('optgroup');g2.label='All voices';voices.filter(v=>!favs.has(v.name)).forEach(v=>add(g2,v));
+    sel.append(g1,g2);
+  } else voices.forEach(v=>add(sel,v));
+  if(voice) sel.value=voices.indexOf(voice);
+  updateStar();
+}
+function updateStar(){
+  const b=$('#voiceStar'),on=!!(voice&&favs.has(voice.name));
+  b.setAttribute('aria-pressed',on?'true':'false');
+  b.textContent=on?'★ Favorite':'☆ Add to favorites';
 }
 if(synth){loadVoices();if(synth.addEventListener)synth.addEventListener('voiceschanged',loadVoices);else synth.onvoiceschanged=loadVoices}
 function curFs(){return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fs'))||23}
 function applyFs(){if(fs)document.documentElement.style.setProperty('--fs',fs+'px');$('#sizeOut').textContent=Math.round(curFs())+' px'}
 applyFs();
 function applySettingsObj(o){
+  if(Array.isArray(o.favs)) favs=new Set(o.favs);
   if(o.rate) rate=+o.rate;
   if(o.opts) Object.assign(opts,o.opts);
   if(o.fs) fs=+o.fs;
   applyFs();
   $('#rate').value=rate;$('#rateOut').textContent=rate.toFixed(1)+'×';
   [['optTitles','titles'],['optCaps','caps'],['optScroll','scroll']].forEach(([id,k])=>{$('#'+id).checked=!!opts[k]});
-  if(o.voice){saved.voice=o.voice;const i=voices.findIndex(v=>v.name===o.voice);if(i>=0){voice=voices[i];$('#voice').value=i}}
+  if(o.voice){saved.voice=o.voice;const i=voices.findIndex(v=>v.name===o.voice);if(i>=0)voice=voices[i]}
+  if(voices.length) renderVoiceSelect();
   saveSettings();
 }
 
@@ -1531,7 +1583,8 @@ $('#seek').addEventListener('change',e=>go(+e.target.value));
 const rateEl=$('#rate');rateEl.value=rate;$('#rateOut').textContent=rate.toFixed(1)+'×';
 rateEl.addEventListener('input',()=>{rate=+rateEl.value;$('#rateOut').textContent=rate.toFixed(1)+'×'});
 rateEl.addEventListener('change',()=>{saveSettings();if(playing)restart();else mark(false)});
-$('#voice').onchange=e=>{voice=voices[+e.target.value];saveSettings();if(playing)restart()};
+$('#voice').onchange=e=>{voice=voices[+e.target.value];updateStar();saveSettings();if(playing)restart()};
+$('#voiceStar').onclick=()=>{if(!voice)return;if(favs.has(voice.name))favs.delete(voice.name);else favs.add(voice.name);saveSettings();renderVoiceSelect();setStatus(favs.has(voice.name)?niceVoice(voice)+' added to your favorite voices.':niceVoice(voice)+' removed from your favorite voices.')};
 $('#voiceTest').onclick=()=>{
   if(!synth) return;
   pause();
@@ -1541,8 +1594,9 @@ $('#voiceTest').onclick=()=>{
   u.onerror=ev=>{if(ev.error==='interrupted'||ev.error==='canceled')return;setStatus('The '+niceVoice(voice)+' voice didn\u2019t work (error: '+(ev.error||'unknown')+'). '+(voice&&!voice.localService?'This is an online voice, so check the internet connection or choose one without “Natural” in its name.':'Try a different voice.'),true)};
   synth.cancel();synth.speak(u);
 };
-$('#bigger').onclick=()=>{fs=Math.min(44,curFs()+2);applyFs();saveSettings();if(queue[idx])queue[idx].scrollIntoView({block:'center'})};
-$('#smaller').onclick=()=>{fs=Math.max(16,curFs()-2);applyFs();saveSettings();if(queue[idx])queue[idx].scrollIntoView({block:'center'})};
+function changeFs(step){fs=Math.min(44,Math.max(16,curFs()+step));applyFs();saveSettings();if(queue[idx])queue[idx].scrollIntoView({block:'center'});setStatus('Text size '+Math.round(curFs())+' px.')}
+$('#bigger').onclick=()=>changeFs(2);$('#smaller').onclick=()=>changeFs(-2);
+$('#pBigger').onclick=()=>changeFs(2);$('#pSmaller').onclick=()=>changeFs(-2);
 [['optTitles','titles'],['optCaps','caps'],['optScroll','scroll']].forEach(([id,k])=>{
   const c=$('#'+id);c.checked=!!opts[k];
   c.onchange=()=>{opts[k]=c.checked;saveSettings();if(cur){buildQueue();renderToc()}};
