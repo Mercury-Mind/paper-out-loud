@@ -65,6 +65,14 @@
   --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px rgba(0,0,0,.45); --scrim:rgba(0,0,0,.6);
   --pic-filter:invert(1) hue-rotate(180deg) brightness(1.15) contrast(1.15); --pic-blend:screen;
 }
+:root[data-scheme="rose"]{
+  color-scheme:light;
+  --bg:#F3E4E7; --sheet:#FFF8F9; --ink:#3A1F27; --muted:#76505C; --line:#E6C8D0;
+  --accent:#A8385A; --accent-ink:#FFFFFF; --accent-soft:#F6DCE4; --chip:#F2DEE3;
+  --mark:#FFE07A; --mark-ink:#3A1F27; --hl:#CDE8D8; --hl-line:#2F8061; --err:#A1262E;
+  --shadow:0 1px 2px rgba(80,20,40,.07),0 10px 30px rgba(80,20,40,.10); --scrim:rgba(50,15,25,.38);
+  --pic-filter:none; --pic-blend:multiply;
+}
 :root[data-scheme="contrast"] .s.on{outline:3px solid #FFFFFF;outline-offset:1px}
 :root[data-scheme="contrast"] .sheet{border:2px solid var(--line)}
 *{box-sizing:border-box}
@@ -94,7 +102,7 @@ button,select,input,textarea{font:inherit;color:inherit}
 .hbtn{min-height:46px;padding:0 12px;border-radius:12px;border:0;background:transparent;font-weight:700;font-size:16px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
 .hbtn:hover{background:var(--chip)}
 .count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:14px;display:inline-grid;place-items:center;font-variant-numeric:tabular-nums}
-body[data-view="library"] #contentsBtn,body[data-view="library"] #notesBtn,body[data-view="library"] .player{display:none}
+body[data-view="library"] #contentsBtn,body[data-view="library"] #notesBtn,body[data-view="library"] #aiBtn,body[data-view="library"] .player{display:none}
 @media (min-width:1180px){#contentsBtn{display:none}}
 
 .status{max-width:1180px;margin:0 auto;padding:0 24px;font-size:17px;color:var(--muted)}
@@ -204,7 +212,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:26px;margin:0}
 .panel{position:fixed;z-index:22;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 112px);width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 180px);overflow:auto;background:var(--sheet);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:20px;display:grid;gap:18px}
 @media (max-width:720px){.panel{bottom:calc(env(safe-area-inset-bottom,0px) + 176px)}}
 .panel h2{font-family:var(--display);font-weight:600;font-size:22px;margin:0}
-.schemes{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px}
+.schemes{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}
 .scheme{display:grid;justify-items:center;gap:6px;padding:8px 8px 10px;border:2px solid var(--line);border-radius:14px;background:var(--sheet);font-weight:700;font-size:15px;cursor:pointer;color:var(--ink)}
 .scheme:hover{border-color:var(--muted)}
 .scheme[aria-checked="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}
@@ -213,6 +221,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:26px;margin:0}
 .sw-sage{background:#FBFCFA;color:#1A201C}.sw-sage i{background:#1E6A58}
 .sw-contrast{background:#000;color:#fff}.sw-contrast i{background:#FFE500}
 .sw-sepia{background:#F6EFDF;color:#33291C}.sw-sepia i{background:#2E5E63}
+.sw-rose{background:#FFF8F9;color:#3A1F27}.sw-rose i{background:#A8385A}
 .sw-midnight{background:#101C33;color:#E6ECF7}.sw-midnight i{background:#FFC857}
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
 .field{display:grid;gap:6px;font-size:15px;color:var(--muted)}
@@ -241,6 +250,34 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
 .nquote{margin:0;font-size:17px;line-height:1.5}
 .nquote.is-hl span{background:var(--hl);box-shadow:inset 0 -2px 0 var(--hl-line);-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 .1em}
 .ntext{margin:0;font-size:17px;line-height:1.5;padding-left:12px;border-left:3px solid var(--accent);white-space:pre-wrap}
+.ai-drawer{width:min(640px,calc(100vw - 24px))}
+.ai-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ai-act{display:grid;gap:4px;text-align:left;padding:14px 16px;border:1.5px solid var(--line);border-radius:16px;background:var(--sheet);cursor:pointer;min-height:84px;align-content:start}
+.ai-act b{font-size:17px}
+.ai-act span{font-size:14px;color:var(--muted)}
+.ai-act:hover{border-color:var(--accent)}
+.ai-act[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.ai-act .saved{font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+.ai-out{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:12px}
+.ai-out-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 12px}
+.ai-out-head h3{font-family:var(--display);font-weight:600;font-size:22px;margin:0}
+.ai-body{font-size:calc(var(--fs)*.82);line-height:1.6}
+.ai-body h4{font-family:var(--display);font-weight:600;font-size:1.05em;margin:1.1em 0 .35em}
+.ai-body h4:first-child{margin-top:0}
+.ai-body p{margin:0 0 .7em}
+.ai-body ul{margin:0 0 .8em;padding-left:1.2em}
+.ai-body li{margin:0 0 .35em}
+.ai-body .on{background:var(--mark);color:var(--mark-ink);border-radius:5px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.ai-thinking{color:var(--muted);font-style:italic}
+.rel{list-style:none;padding:0;margin:0 0 1em;display:grid;gap:10px}
+.rel li{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0}
+.rel .t{font-weight:700;display:block}
+.rel .m{color:var(--muted);font-size:.9em;display:block;margin:2px 0 6px}
+.rel a,.topics a{color:var(--accent);font-weight:700;text-underline-offset:3px}
+.rel .links{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:6px;font-size:.9em}
+.topics{display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:0;list-style:none}
+.topics li{background:var(--chip);border-radius:999px;padding:4px 12px;margin:0}
+@media (max-width:560px){.ai-actions{grid-template-columns:1fr}}
 .pop{position:fixed;z-index:28;background:var(--sheet);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:6px;display:grid;gap:2px;width:250px}
 .pop button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;font-size:18px;font-weight:700}
 .pop button:hover,.pop button:focus-visible{background:var(--chip)}
@@ -309,6 +346,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
     <nav class="nav" aria-label="Main">
       <button class="hbtn" id="contentsBtn" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>Contents</button>
       <button class="hbtn" id="notesBtn" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/></svg>Notes <span class="count" id="notesCount" hidden></span></button>
+      <button class="hbtn" id="aiBtn" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z"/></svg>AI</button>
       <button class="hbtn" id="libraryBtn"><svg class="i" viewBox="0 0 24 24"><path d="M5 4v16M10 4v16M14.5 5l4.5 15"/></svg>Library</button>
       <button class="hbtn" id="openTop"><svg class="i" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>Open</button>
     </nav>
@@ -386,6 +424,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
       <button type="button" role="radio" class="scheme" data-scheme="contrast" aria-checked="false"><span class="sw sw-contrast" aria-hidden="true">Aa<i></i></span>High contrast</button>
       <button type="button" role="radio" class="scheme" data-scheme="sepia" aria-checked="false"><span class="sw sw-sepia" aria-hidden="true">Aa<i></i></span>Sepia</button>
       <button type="button" role="radio" class="scheme" data-scheme="midnight" aria-checked="false"><span class="sw sw-midnight" aria-hidden="true">Aa<i></i></span>Midnight</button>
+      <button type="button" role="radio" class="scheme" data-scheme="rose" aria-checked="false"><span class="sw sw-rose" aria-hidden="true">Aa<i></i></span>Rose</button>
     </div>
   </div>
   <div class="fields">
@@ -422,6 +461,28 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
   <div class="row" id="notesActions" hidden><button class="btn" id="exportBtn">Save as a file</button><button class="btn quiet" id="copyBtn">Copy all</button></div>
 </aside>
 
+<aside class="drawer right ai-drawer" id="aiDrawer" aria-labelledby="aiHead" hidden>
+  <div class="drawer-head"><h2 id="aiHead">AI tools</h2><button class="btn quiet sm drawer-close" aria-label="Close AI tools"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <p class="fine" id="aiIntro">Uses your Claude account. Answers are based only on this paper and are saved with it.</p>
+  <div class="ai-actions" id="aiActions">
+    <button class="ai-act" data-kind="summary"><b>Summarize this paper</b><span>Plain-language overview</span></button>
+    <button class="ai-act" data-kind="notes"><b>Create notes</b><span>Study notes in a set format</span></button>
+    <button class="ai-act" data-kind="insights"><b>Key insights</b><span>What matters and why</span></button>
+    <button class="ai-act" data-kind="related"><b>Related papers</b><span>From its reference list</span></button>
+  </div>
+  <p class="fine" id="aiUnavailable" hidden>AI tools work when Paper Out Loud is opened from its Claude link, using your Claude account. This copy of the app can’t reach Claude.</p>
+  <section class="ai-out" id="aiOut" hidden aria-live="polite">
+    <div class="ai-out-head"><h3 id="aiOutTitle"></h3><span class="fine" id="aiOutMeta"></span></div>
+    <div class="row" id="aiOutActions">
+      <button class="btn sm primary" id="aiRead">Read aloud</button>
+      <button class="btn sm" id="aiStop" hidden>Stop</button>
+      <button class="btn sm quiet" id="aiCopy">Copy</button>
+      <button class="btn sm quiet" id="aiSave">Save as a file</button>
+      <button class="btn sm quiet" id="aiRegen">Make a new one</button>
+    </div>
+    <div class="ai-body" id="aiBody"></div>
+  </section>
+</aside>
 <div class="pop" id="pop" role="menu" aria-label="Sentence options" hidden>
   <button role="menuitem" id="popPlay"><svg class="i" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>Read from here</span></button>
   <button role="menuitem" id="popHl"><svg class="i" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5L10 19H5v-5z"/><path d="M4 22h16"/></svg><span>Highlight</span></button>
@@ -1389,9 +1450,9 @@ function openDrawer(id,btn){
 function closeDrawers(){
   $('#scrim').hidden=true;
   $$('.drawer').forEach(d=>d.hidden=true);
-  $('#contentsBtn').setAttribute('aria-expanded','false');$('#notesBtn').setAttribute('aria-expanded','false');
+  $('#contentsBtn').setAttribute('aria-expanded','false');$('#notesBtn').setAttribute('aria-expanded','false');$('#aiBtn').setAttribute('aria-expanded','false');if(typeof stopAiSpeech==='function'&&$('#aiStop')&&!$('#aiStop').hidden)stopAiSpeech();
 }
-function openSettings(){closePop();closeDrawers();$('#settings').hidden=false;$('#setBtn').setAttribute('aria-expanded','true')}
+function openSettings(){closePop();closeDrawers();if(typeof refreshVoices==='function')refreshVoices();$('#settings').hidden=false;$('#setBtn').setAttribute('aria-expanded','true')}
 function closeSettings(){$('#settings').hidden=true;$('#setBtn').setAttribute('aria-expanded','false')}
 function setToc(collapsed){document.body.classList.toggle('toc-collapsed',collapsed);store.set('pol-tocCollapsed',collapsed)}
 setToc(!!store.get('pol-tocCollapsed',false));
@@ -1401,6 +1462,7 @@ $('#contentsBtn').onclick=e=>{
   openDrawer('contentsDrawer',e.currentTarget);
 };
 $('#notesBtn').onclick=e=>openDrawer('notesDrawer',e.currentTarget);
+$('#aiBtn').onclick=e=>{openDrawer('aiDrawer',e.currentTarget);renderAiPanel()};
 $('#scrim').onclick=closeDrawers;
 $$('.drawer-close').forEach(b=>b.onclick=closeDrawers);
 $('#setBtn').onclick=()=>$('#settings').hidden?openSettings():closeSettings();
@@ -1457,7 +1519,13 @@ function updateStar(){
   b.setAttribute('aria-pressed',on?'true':'false');
   b.textContent=on?'★ Favorite':'☆ Add to favorites';
 }
-if(synth){loadVoices();if(synth.addEventListener)synth.addEventListener('voiceschanged',loadVoices);else synth.onvoiceschanged=loadVoices}
+// Edge adds its online voices late and doesn't always announce it, so check again for a while
+function refreshVoices(){if(!synth)return;const n=synth.getVoices().length;if(n&&n!==voices.length)loadVoices()}
+if(synth){
+  loadVoices();
+  if(synth.addEventListener)synth.addEventListener('voiceschanged',loadVoices);else synth.onvoiceschanged=loadVoices;
+  let tries=0;const t=setInterval(()=>{refreshVoices();if(++tries>=20)clearInterval(t)},1000);
+}
 function curFs(){return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fs'))||23}
 function applyFs(){if(fs)document.documentElement.style.setProperty('--fs',fs+'px');$('#sizeOut').textContent=Math.round(curFs())+' px'}
 applyFs();
@@ -1481,6 +1549,208 @@ function applySettingsObj(o){
   if(voices.length) renderVoiceSelect();
   saveSettings();
 }
+
+/* ---------- AI tools (Claude, through the viewer's own account) ---------- */
+const AI_KINDS={
+  summary:{title:'Summary',file:'summary'},
+  notes:{title:'Study notes',file:'notes'},
+  insights:{title:'Key insights',file:'key insights'},
+  related:{title:'Related papers',file:'related papers'}
+};
+let sampleFn=null,aiReady=false,aiKind=null,aiCtl=null,aiBusy=false;
+if(window.claude&&typeof window.claude.use==='function'){
+  window.claude.use('sample').then(f=>{sampleFn=f;aiReady=!!f;renderAiPanel()}).catch(()=>{aiReady=false;renderAiPanel()});
+}
+const STYLE='You are helping a PhD candidate with low vision who listens to research papers read aloud. Write in plain, clear English that sounds natural when read aloud: no LaTeX, no math symbols (say them in words), no tables, no emoji, no bold or italics. Use only the paper below. Do not invent facts, numbers, authors or citations; if something is not in the paper, say it is not stated.\nFormat: a line starting with "## " is a section heading; a line starting with "- " is a bullet point; everything else is a plain paragraph. No other formatting.';
+const PROMPTS={
+  summary:'Summarize this paper using exactly these sections:\n## In one sentence\n## What problem it tackles\n## How they approached it\n## What they found\n## Why it matters\nEach section is one short paragraph (2 to 4 sentences), except "In one sentence".',
+  notes:'Create study notes for this paper using exactly these sections, in this order, with these exact headings:\n## Citation\n(title; authors, year and venue if stated)\n## Research question\n## Why it matters\n## Approach\n(data, methods, study design, as bullet points)\n## Key findings\n(bullet points; include the important numbers)\n## Limitations\n(bullet points, including ones the authors state)\n## Key terms\n(bullet points in the form "term: plain-language definition")\n## Questions to follow up\n(3 to 5 bullet points worth thinking about or asking an advisor)',
+  insights:'List the key insights of this paper using exactly these sections:\n## Key insights\n(5 to 7 bullet points; each gives the insight in one sentence, then "Why it matters:" and one sentence)\n## What is new here\n(2 or 3 bullet points on what this paper adds beyond earlier work)\n## How strong is the evidence\n(one short paragraph)'
+};
+function utf8len(t){return new TextEncoder().encode(t).length}
+function paperText(){
+  const out=[];
+  for(const s of cur.doc.sections){
+    if(s.skip||s.caps) continue;
+    out.push('## '+s.title);
+    for(const p of s.paras){
+      if(p.type==='p') out.push(p.raw);
+      else if(p.type==='figure') out.push('['+p.raw+']');
+      else if(p.type==='eq') out.push('[equation]');
+      else if(p.type==='table') out.push('[table]');
+    }
+  }
+  return out.join('\n');
+}
+function refsText(){return cur.doc.sections.filter(s=>s.skip==='refs').map(s=>s.paras.map(p=>p.raw).join('\n')).join('\n')}
+function clip(t,maxBytes){if(utf8len(t)<=maxBytes)return t;let lo=0,hi=t.length;while(lo<hi){const m=(lo+hi+1)>>1;if(utf8len(t.slice(0,m))<=maxBytes)lo=m;else hi=m-1}return t.slice(0,lo)+'\n[the rest of the paper was cut to fit]'}
+function buildPrompt(kind){
+  const head='Paper title: '+cur.doc.title+'\n\n';
+  if(kind==='related'){
+    const ask='From the reference list below, choose the 5 to 8 works that this paper most directly builds on or compares against. Reply with only a JSON object of this shape:\n{"builds_on":[{"title":"...","authors":"first author et al.","year":"2019","why":"one sentence, in plain English, on how it relates to this paper"}],"topics":["3 to 6 short search phrases for finding newer related research"]}\nUse titles, authors and years exactly as they appear in the reference list. If there is no reference list, return an empty builds_on list. Write "why" and "topics" in plain words, no math symbols. Do not invent works.';
+    const refs=clip(refsText()||'(no reference list was found)',16000);
+    const body=clip(paperText(),60000-utf8len(ask+head+refs)-2000);
+    return ask+'\n\n'+head+'PAPER TEXT:\n'+body+'\n\nREFERENCE LIST:\n'+refs;
+  }
+  const ask=STYLE+'\n\n'+PROMPTS[kind];
+  return ask+'\n\n'+head+'PAPER TEXT:\n'+clip(paperText(),60000-utf8len(ask+head)-1500);
+}
+function aiErrorText(e){
+  const c=e&&e.code;
+  if(c==='not_granted'||c==='sampling_disabled'||c==='not_declared'||c==='capability_disabled'||c==='capability_removed') return 'AI isn’t available here. Claude access was not allowed for this page, or isn’t available on this account.';
+  if(c==='rate_limited') return 'You’ve reached a usage limit for now. Try again a little later.';
+  if(c==='session_expired') return 'Your Claude session expired. Sign in to claude.ai again, then try once more.';
+  if(c==='prompt_too_large') return 'This paper is too long to send in one go.';
+  if(c==='invalid_json') return 'The answer came back in an unexpected shape. Press “Make a new one” to try again.';
+  if(c==='refused') return 'Claude declined to answer this one.';
+  return 'Something went wrong while asking Claude. Press “Make a new one” to try again.';
+}
+function renderAiText(text){
+  const body=$('#aiBody');body.innerHTML='';
+  let ul=null;
+  for(const raw of String(text).replace(/\*\*/g,'').split('\n')){
+    const line=raw.trim();
+    if(!line){ul=null;continue}
+    if(/^#{2,4}\s+/.test(line)){ul=null;body.append(el('h4','ai-b',line.replace(/^#{2,4}\s+/,'')));continue}
+    if(/^[-•*]\s+/.test(line)){if(!ul){ul=el('ul');body.append(ul)}ul.append(el('li','ai-b',line.replace(/^[-•*]\s+/,'')));continue}
+    ul=null;body.append(el('p','ai-b',line));
+  }
+}
+function scholar(q){return 'https://scholar.google.com/scholar?q='+encodeURIComponent(q)}
+function renderRelated(data){
+  const body=$('#aiBody');body.innerHTML='';
+  const list=Array.isArray(data&&data.builds_on)?data.builds_on:[];
+  body.append(el('h4','ai-b','Papers this work builds on'));
+  if(!list.length) body.append(el('p','ai-b','No reference list was found in this paper, so there are no cited works to suggest.'));
+  else{
+    body.append(el('p','fine','Picked from this paper’s own reference list.'));
+    const ul=el('ul','rel');
+    for(const it of list){
+      const title=String(it.title||'').trim();if(!title)continue;
+      const li=el('li','ai-b');
+      li.append(el('span','t',title));
+      const meta=[it.authors,it.year].filter(Boolean).map(String).join(', ');
+      if(meta) li.append(el('span','m',meta));
+      if(it.why) li.append(el('span',null,String(it.why)));
+      const links=el('span','links');
+      const a1=el('a',null,'Find on Google Scholar');a1.href=scholar(title+' '+(it.year||''));a1.target='_blank';a1.rel='noopener';
+      const a2=el('a',null,'Find on Semantic Scholar');a2.href='https://www.semanticscholar.org/search?q='+encodeURIComponent(title);a2.target='_blank';a2.rel='noopener';
+      links.append(a1,a2);li.append(links);ul.append(li);
+    }
+    body.append(ul);
+  }
+  const topics=Array.isArray(data&&data.topics)?data.topics.map(String).filter(Boolean):[];
+  if(topics.length){
+    body.append(el('h4','ai-b','Search for newer research'));
+    const tl=el('ul','topics');
+    topics.forEach(t=>{const li=el('li','ai-b');const a=el('a',null,t);a.href=scholar(t);a.target='_blank';a.rel='noopener';li.append(a);tl.append(li)});
+    body.append(tl);
+  }
+}
+function relatedAsText(data){
+  const lines=['Related papers for: '+cur.doc.title,''];
+  (data.builds_on||[]).forEach(it=>{lines.push('- '+it.title+(it.authors||it.year?' ('+[it.authors,it.year].filter(Boolean).join(', ')+')':''));if(it.why)lines.push('  '+it.why)});
+  if((data.topics||[]).length){lines.push('','Search for newer research:');data.topics.forEach(t=>lines.push('- '+t))}
+  return lines.join('\n');
+}
+function aiSaved(kind){return cur&&cur.state.ai&&cur.state.ai[kind]}
+function renderAiPanel(){
+  const has=!!cur;
+  $('#aiUnavailable').hidden=aiReady;
+  $('#aiIntro').hidden=!aiReady;
+  $$('.ai-act').forEach(b=>{
+    b.disabled=!aiReady||!has;
+    b.setAttribute('aria-current',b.dataset.kind===aiKind?'true':'false');
+    let tag=b.querySelector('.saved');
+    if(aiSaved(b.dataset.kind)){if(!tag){tag=el('span','saved','Saved');b.append(tag)}}else if(tag)tag.remove();
+  });
+  if(!aiKind||!has){$('#aiOut').hidden=true;return}
+  const saved=aiSaved(aiKind);
+  $('#aiOut').hidden=false;
+  $('#aiOutTitle').textContent=AI_KINDS[aiKind].title;
+  if(aiBusy) return;
+  $('#aiOutMeta').textContent=saved?'Made '+rel(saved.at):'';
+  $('#aiOutActions').hidden=!saved;
+  if(saved){aiKind==='related'?renderRelated(saved.data):renderAiText(saved.text)}
+}
+async function runAi(kind,fresh){
+  if(!cur||!sampleFn) return;
+  stopAiSpeech();
+  aiKind=kind;
+  if(!fresh&&aiSaved(kind)){renderAiPanel();return}
+  if(aiCtl) aiCtl.abort();
+  const ctl=aiCtl=new AbortController();
+  aiBusy=true;renderAiPanel();
+  $('#aiOutActions').hidden=true;$('#aiOutMeta').textContent='';
+  const body=$('#aiBody');body.innerHTML='';
+  const wait=el('p','ai-thinking','Reading the paper and thinking… this can take up to a minute.');
+  const stop=el('button','btn sm','Stop');stop.onclick=()=>ctl.abort();
+  body.append(wait,stop);
+  const paperId=cur.id;
+  try{
+    const prompt=buildPrompt(kind);
+    const opts={signal:ctl.signal,modelTier:'default'};
+    if(fresh) opts.cache=false;
+    if(kind==='related'){
+      const data=await sampleFn.json(prompt,opts);
+      if(!cur||cur.id!==paperId) return;
+      cur.state.ai=cur.state.ai||{};cur.state.ai.related={data,at:Date.now()};
+    } else {
+      opts.onText=({text})=>{if(aiKind===kind&&cur&&cur.id===paperId){renderAiText(text);const s=el('button','btn sm','Stop');s.onclick=()=>ctl.abort();$('#aiBody').append(s)}};
+      const res=await sampleFn(prompt,opts);
+      if(!cur||cur.id!==paperId) return;
+      cur.state.ai=cur.state.ai||{};cur.state.ai[kind]={text:res.text,at:Date.now(),truncated:!!res.truncated};
+    }
+    scheduleSave();
+    aiBusy=false;
+    if(aiKind===kind) renderAiPanel();
+    if(cur.state.ai[kind]&&cur.state.ai[kind].truncated) setStatus('The answer was cut short because it got too long.',true);
+  }catch(e){
+    aiBusy=false;
+    if(aiKind!==kind) return;
+    renderAiPanel();
+    const body2=$('#aiBody');
+    if(e&&e.code==='cancelled'){body2.innerHTML='';if(aiSaved(kind))renderAiPanel();else $('#aiOut').hidden=true;return}
+    body2.innerHTML='';
+    if(e&&e.text&&kind!=='related'&&e.code!=='refused') renderAiText(e.text);
+    body2.append(el('p','ai-thinking',aiErrorText(e)));
+    const again=el('button','btn sm','Try again');again.onclick=()=>runAi(kind,true);body2.append(again);
+  }finally{if(aiCtl===ctl)aiCtl=null}
+}
+// read an AI answer aloud, block by block, with the same voice and speed
+let aiTok=0;
+function stopAiSpeech(){aiTok++;if(synth)synth.cancel();$$('#aiBody .on').forEach(x=>x.classList.remove('on'));$('#aiRead').hidden=false;$('#aiStop').hidden=true}
+function readAi(){
+  if(!synth) return;
+  pause();
+  const blocks=$$('#aiBody .ai-b');if(!blocks.length) return;
+  const my=++aiTok;let i=0;
+  $('#aiRead').hidden=true;$('#aiStop').hidden=false;
+  const next=()=>{
+    if(my!==aiTok) return;
+    $$('#aiBody .on').forEach(x=>x.classList.remove('on'));
+    if(i>=blocks.length){stopAiSpeech();return}
+    const b=blocks[i++];b.classList.add('on');b.scrollIntoView({block:'nearest',behavior:smooth()});
+    const t=b.querySelector('.t')?[...b.children].filter(c=>c.tagName!=='SPAN'||!c.classList.contains('links')).map(c=>c.textContent).join('. '):b.textContent;
+    const u=new SpeechSynthesisUtterance(t);
+    if(voice){u.voice=voice;u.lang=voice.lang}u.rate=rate;
+    u.onend=()=>next();
+    u.onerror=ev=>{if(ev.error==='interrupted'||ev.error==='canceled')return;stopAiSpeech();setStatus('The voice stopped (error: '+(ev.error||'unknown')+'). Try another voice in Settings.',true)};
+    synth.speak(u);
+  };
+  if(synth.speaking||synth.pending){synth.cancel();setTimeout(next,80)}else next();
+}
+function aiPlainText(){
+  const saved=aiSaved(aiKind);if(!saved) return '';
+  if(aiKind==='related') return relatedAsText(saved.data);
+  return AI_KINDS[aiKind].title+': '+cur.doc.title+'\n\n'+saved.text.replace(/\*\*/g,'').replace(/^#{2,4}\s+/gm,'').trim();
+}
+$$('.ai-act').forEach(b=>b.onclick=()=>runAi(b.dataset.kind,false));
+$('#aiRegen').onclick=()=>{if(aiKind)runAi(aiKind,true)};
+$('#aiRead').onclick=readAi;
+$('#aiStop').onclick=stopAiSpeech;
+$('#aiCopy').onclick=()=>{const text=aiPlainText();try{navigator.clipboard.writeText(text).then(()=>setStatus('Copied.'),()=>setStatus('Copying isn’t allowed here. Use “Save as a file” instead.',true))}catch(e){setStatus('Copying isn’t allowed here. Use “Save as a file” instead.',true)}};
+$('#aiSave').onclick=async()=>{const name=(cur.doc.title.replace(/[^\w\s-]/g,'').trim().slice(0,60)||'Paper')+' - '+AI_KINDS[aiKind].file+'.txt';const res=await saveFile(name,aiPlainText(),'text/plain');if(res==='saved')setStatus('Saved as a file.');else if(res==='failed')setStatus('The file couldn’t be saved here. Use “Copy” instead.',true)};
 
 /* ---------- enlarged pictures ---------- */
 let zoomReturn=null,zoomScale=1;
@@ -1548,6 +1818,7 @@ async function openPaper(id,o={}){
   state.highlights=state.highlights||{};state.notes=state.notes||{};state.include=state.include||{};
   meta.openedAt=Date.now();Store.put('meta',meta);
   cur={id,meta,doc:rec.doc,state};
+  if(aiCtl)aiCtl.abort();aiKind=null;aiBusy=false;
   setView('reader');
   render();queue=[];idx=0;buildQueue();renderToc();renderNotes();
   if(state.pos>0){
