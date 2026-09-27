@@ -335,6 +335,18 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
 .lib-prog i{display:block;height:100%;background:var(--accent)}
 .lib-confirm{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:4px 16px 12px;font-size:17px}
 
+.reading{display:grid;gap:12px}
+.reading h2{font-family:var(--display);font-weight:600;font-size:24px;margin:0}
+.rl-item{background:var(--sheet);border-radius:18px;box-shadow:var(--shadow);padding:16px 18px;display:grid;gap:8px}
+.rl-item .t{font-family:var(--display);font-weight:600;font-size:20px;line-height:1.25}
+.rl-item .m{font-size:15px;color:var(--muted)}
+.rl-item .why{font-size:16px;margin:0}
+.rl-item a{color:var(--accent);font-weight:700;text-underline-offset:3px}
+.rl-item .links{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:15px}
+.rl-item textarea{width:100%;min-height:64px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);font-size:16px;line-height:1.45;resize:vertical}
+.ask{border:1.5px solid var(--accent);background:var(--accent-soft);border-radius:12px;padding:10px 12px;display:grid;gap:8px;margin-top:8px}
+.ask p{margin:0;font-size:.95em}
+.rel .saved-note{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--accent);font-size:.9em;margin-top:6px}
 .backup{border-top:1px solid var(--line);padding-top:22px;display:grid;gap:12px}
 .backup h2{font-family:var(--display);font-weight:600;font-size:24px;margin:0}
 .drop{position:fixed;inset:0;z-index:50;background:var(--scrim);display:grid;place-items:center;padding:24px}
@@ -421,6 +433,11 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
   </div>
   <p class="fine" id="libEmpty" hidden>No saved papers yet.</p>
   <ul class="lib-list" id="libList"></ul>
+  <section class="reading" id="readingSec" hidden aria-labelledby="readingHead">
+    <h2 id="readingHead">Reading list</h2>
+    <p class="fine">Papers you saved from “Related papers”. Find the PDF, download it, then open it here: it moves into your library automatically.</p>
+    <ul class="lib-list" id="readingList"></ul>
+  </section>
   <section class="backup" aria-labelledby="bkHead">
     <h2 id="bkHead">Backup</h2>
     <p class="fine">Your papers, places, highlights, notes and settings are saved in this browser on this device. Clearing browsing data erases them. Save a backup now and then, and keep the file somewhere safe like OneDrive. You can restore it here, or on another device.</p>
@@ -1445,8 +1462,9 @@ async function makeBackup(){
   if(cur) states.set(cur.id,cur.state);
   const papers=[];
   for(const m of metas){const d=await Store.get('docs',m.id);if(d)papers.push({meta:m,doc:d.doc,state:states.get(m.id)||blankState(m.id)})}
-  if(!papers.length){setStatus('There’s nothing to back up yet.',true);return}
-  const data={app:'paper-out-loud',version:1,savedAt:new Date().toISOString(),settings:store.get('pol-settings',{}),papers};
+  await loadReading();
+  if(!papers.length&&!reading.items.length){setStatus('There’s nothing to back up yet.',true);return}
+  const data={app:'paper-out-loud',version:1,savedAt:new Date().toISOString(),settings:store.get('pol-settings',{}),papers,reading:reading.items};
   const day=new Date().toISOString().slice(0,10);
   const res=await saveFile('Paper Out Loud backup '+day+'.json',JSON.stringify(data),'application/json');
   if(res==='saved'){store.set('pol-lastBackup',Date.now());backupInfo();setStatus('Backup saved with '+plural(papers.length,'paper')+'. Keep the file somewhere safe.')}
@@ -1481,11 +1499,13 @@ async function restoreBackup(file){
       await Store.put('meta',Object.assign({},p.meta,{id,total:p.meta.total||countSpans(p.doc)}));added++;
     }
   }
-  if(!added&&!merged){setStatus('That backup didn’t contain any papers.',true);return}
+  let rl=0;
+  if(Array.isArray(data.reading)){await loadReading();for(const it of data.reading){if(it&&it.title&&!inReading(it.title)){reading.items.push(Object.assign({key:normTitle(it.title),note:'',addedAt:Date.now()},it));rl++}}if(rl)await saveReading()}
+  if(!added&&!merged&&!rl){setStatus('That backup didn’t contain any papers.',true);return}
   if(data.settings&&typeof data.settings==='object') applySettingsObj(data.settings);
   store.set('pol-seeded',true);
   if(cur&&document.body.dataset.view==='reader') await openPaper(cur.id); else await renderLibrary();
-  const parts=[];if(added)parts.push(plural(added,'paper')+' added');if(merged)parts.push(plural(merged,'paper')+' already here and updated');
+  const parts=[];if(added)parts.push(plural(added,'paper')+' added');if(merged)parts.push(plural(merged,'paper')+' already here and updated');if(rl)parts.push(plural(rl,'reading list entry','reading list entries')+' added');
   setStatus('Backup restored: '+parts.join(', ')+'. It held '+plural(marks,'highlight or note','highlights and notes')+'.',false,true);
 }
 
@@ -1600,7 +1620,7 @@ $('#contentsBtn').onclick=e=>{
   openDrawer('contentsDrawer',e.currentTarget);
 };
 $('#notesBtn').onclick=e=>openDrawer('notesDrawer',e.currentTarget);
-$('#aiBtn').onclick=e=>{openDrawer('aiDrawer',e.currentTarget);renderAiPanel()};
+$('#aiBtn').onclick=async e=>{openDrawer('aiDrawer',e.currentTarget);await loadReading();renderAiPanel()};
 $('#scrim').onclick=closeDrawers;
 $$('.drawer-close').forEach(b=>b.onclick=closeDrawers);
 $('#setBtn').onclick=()=>$('#settings').hidden?openSettings():closeSettings();
@@ -1761,7 +1781,7 @@ function renderRelated(data){
   body.append(el('h4','ai-b','Papers this work builds on'));
   if(!list.length) body.append(el('p','ai-b','No reference list was found in this paper, so there are no cited works to suggest.'));
   else{
-    body.append(el('p','fine','Picked from this paper’s own reference list.'));
+    body.append(el('p','fine','Picked from this paper’s own reference list. Want to read one? Choose “Save to my reading list” and I’ll keep it for you.'));
     const ul=el('ul','rel');
     for(const it of list){
       const title=String(it.title||'').trim();if(!title)continue;
@@ -1773,7 +1793,24 @@ function renderRelated(data){
       const links=el('span','links');
       const a1=el('a',null,'Find on Google Scholar');a1.href=scholar(title+' '+(it.year||''));a1.target='_blank';a1.rel='noopener';
       const a2=el('a',null,'Find on Semantic Scholar');a2.href='https://www.semanticscholar.org/search?q='+encodeURIComponent(title);a2.target='_blank';a2.rel='noopener';
-      links.append(a1,a2);li.append(links);ul.append(li);
+      links.append(a1,a2);li.append(links);
+      const slot=el('div');li.append(slot);
+      const showSaved=()=>{slot.innerHTML='';const n=el('span','saved-note','✓ On your reading list');slot.append(n)};
+      if(readingLoaded&&inReading(title)) showSaved();
+      else{
+        const save=el('button','btn sm','Save to my reading list');save.style.marginTop='8px';
+        save.onclick=()=>{
+          slot.innerHTML='';
+          const ask=el('div','ask');
+          ask.append(el('p',null,'Save “'+title+'” to your reading list? It will wait in your Library. When you download the PDF and open it here, it becomes a regular paper with its own notes.'));
+          const row=el('div','row');const yes=el('button','btn sm primary','Yes, save it'),no=el('button','btn sm quiet','Not now');
+          yes.onclick=async()=>{const added=await addToReading(it);showSaved();setStatus(added?'Saved “'+title+'” to your reading list in the Library.':'That paper is already on your reading list.')};
+          no.onclick=()=>{slot.innerHTML='';slot.append(save)};
+          row.append(yes,no);ask.append(row);slot.append(ask);yes.focus();
+        };
+        slot.append(save);
+      }
+      ul.append(li);
     }
     body.append(ul);
   }
@@ -1813,6 +1850,7 @@ function renderAiPanel(){
 }
 async function runAi(kind,fresh){
   if(!cur||!sampleFn) return;
+  await loadReading();
   stopAiSpeech();
   aiKind=kind;
   if(!fresh&&aiSaved(kind)){renderAiPanel();return}
@@ -1959,6 +1997,75 @@ function closeZoom(){if($('#zoom').hidden)return;$('#zoom').hidden=true;zoomRetu
 $('#zoomClose').onclick=closeZoom;
 $('#zoomBigger').onclick=()=>{zoomScale=zoomScale>=3?1:zoomScale+1;const im=$('#zoomImg');im.style.width=(100*zoomScale)+'%';im.style.maxWidth='none';$('#zoomBigger').textContent=zoomScale>=3?'Fit to screen':'Zoom in'};
 
+/* ---------- reading list (papers saved from "Related papers") ---------- */
+let reading={id:'reading-list',items:[]},readingLoaded=false,pendingReading=null;
+function normTitle(t){return String(t||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()}
+function sameTitle(a,b){
+  a=normTitle(a);b=normTitle(b);if(!a||!b) return false;
+  if(a===b) return true;
+  if(a.length>24&&b.length>24&&(a.includes(b)||b.includes(a))) return true;
+  const A=new Set(a.split(' ').filter(w=>w.length>2)),B=new Set(b.split(' ').filter(w=>w.length>2));
+  if(A.size<4||B.size<4) return false;
+  let inter=0;A.forEach(w=>{if(B.has(w))inter++});
+  return inter/Math.max(A.size,B.size)>=0.8;
+}
+async function loadReading(){if(readingLoaded)return;const r=await Store.get('state','reading-list');if(r&&Array.isArray(r.items))reading=r;readingLoaded=true}
+async function saveReading(){await Store.put('state',reading)}
+function inReading(title){return reading.items.find(it=>sameTitle(it.title,title))}
+async function addToReading(item){
+  await loadReading();
+  if(inReading(item.title)) return false;
+  reading.items.push({key:normTitle(item.title),title:String(item.title),authors:item.authors?String(item.authors):'',year:item.year?String(item.year):'',why:item.why?String(item.why):'',from:cur?cur.doc.title:'',addedAt:Date.now(),note:''});
+  await saveReading();return true;
+}
+function arxivSearch(q){return 'https://arxiv.org/search/?query='+encodeURIComponent(q)+'&searchtype=title'}
+function renderReading(){
+  const sec=$('#readingSec'),ul=$('#readingList');ul.innerHTML='';
+  sec.hidden=!reading.items.length;
+  for(const it of reading.items.slice().sort((a,b)=>b.addedAt-a.addedAt)){
+    const li=el('li','rl-item');
+    li.append(el('span','t',it.title));
+    const meta=[it.authors,it.year].filter(Boolean).join(', ');
+    li.append(el('span','m',(meta?meta+' · ':'')+'saved '+rel(it.addedAt)+(it.from?' from “'+it.from+'”':'')));
+    if(it.why) li.append(el('p','why',it.why));
+    const links=el('span','links');
+    [['Find on Google Scholar',scholar(it.title+' '+(it.year||''))],['Semantic Scholar','https://www.semanticscholar.org/search?q='+encodeURIComponent(it.title)],['arXiv',arxivSearch(it.title)]].forEach(([t,h])=>{const a=el('a',null,t);a.href=h;a.target='_blank';a.rel='noopener';links.append(a)});
+    li.append(links);
+    const lab=el('label','fine','Notes before reading (they move into the paper’s notepad):');const ta=el('textarea');ta.value=it.note||'';
+    const id='rl-'+it.key.replace(/\s+/g,'-').slice(0,40);ta.id=id;lab.htmlFor=id;
+    let t=null;ta.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>{it.note=ta.value;saveReading()},400)});
+    li.append(lab,ta);
+    const row=el('div','row');
+    const open=el('button','btn sm primary','I have the PDF: open it');open.onclick=()=>{pendingReading=it.key;$('#fileInput').click()};
+    const rm=el('button','btn sm quiet','Remove');
+    const conf=el('div','row');conf.hidden=true;
+    const yes=el('button','btn sm danger','Remove from reading list'),no=el('button','btn sm quiet','Keep it');
+    conf.append(yes,no);rm.onclick=()=>{conf.hidden=false;no.focus()};no.onclick=()=>{conf.hidden=true};
+    yes.onclick=async()=>{reading.items=reading.items.filter(x=>x!==it);await saveReading();renderReading();setStatus('Removed from your reading list.')};
+    row.append(open,rm);li.append(row,conf);ul.append(li);
+  }
+}
+// after a paper is opened: if it was on the reading list, move it into the library
+async function claimFromReading(){
+  await loadReading();
+  if(!cur) return;
+  let it=pendingReading?reading.items.find(x=>x.key===pendingReading):null;
+  const picked=!!it;
+  if(!it) it=inReading(cur.doc.title);
+  pendingReading=null;
+  if(!it) return;
+  if(picked&&!sameTitle(it.title,cur.doc.title)){
+    // she chose this PDF for the entry but the title differs; still attach, and say so
+    setStatus('Opened this PDF for “'+it.title+'” from your reading list. Its title looks different, so check it’s the right paper.',false,true);
+  } else setStatus('“'+it.title+'” was on your reading list, so it’s now in your library.',false,true);
+  if(it.note&&it.note.trim()){
+    const pad=cur.state.pad&&cur.state.pad.text||'';
+    cur.state.pad={text:'From your reading list:\n'+it.note.trim()+(pad?'\n\n'+pad:''),at:Date.now()};saveNow();
+    if(!$('#pad').hidden) loadPad();
+  }
+  reading.items=reading.items.filter(x=>x!==it);await saveReading();
+}
+
 /* ---------- library ---------- */
 function setView(v){
   document.body.dataset.view=v;
@@ -1977,6 +2084,7 @@ async function renderLibrary(){
   $('#libEmpty').hidden=metas.length>0;
   $('#backToReading').hidden=!cur;
   backupInfo();
+  await loadReading();renderReading();
   for(const m of metas){
     const s=states.get(m.id)||blankState(m.id);
     const pct=m.total&&s.pos?Math.min(100,Math.round((s.pos+1)/m.total*100)):0;
@@ -2039,12 +2147,13 @@ async function addPaper(id,doc,info){
     const marks=st?Object.keys(st.highlights||{}).length+Object.keys(st.notes||{}).length:0;
     if(old&&!old.doc.v&&!marks){await Store.put('docs',{id,doc});existing.total=countSpans(doc);existing.title=doc.title;await Store.put('meta',existing);if(st){st.pos=0;await Store.put('state',st)}}
   }
-  if(existing){await openPaper(id);setStatus('You’ve opened this paper before, so your place, highlights and notes are back.');return}
+  if(existing){await openPaper(id);setStatus('You’ve opened this paper before, so your place, highlights and notes are back.');await claimFromReading();return}
   const now=Date.now();
   await Store.put('docs',{id,doc});
   await Store.put('state',blankState(id));
   await Store.put('meta',{id,title:doc.title,label:info.label,sample:!!info.sample,addedAt:now,openedAt:now,total:countSpans(doc)});
   await openPaper(id,{fresh:!info.sample});
+  if(!info.sample) await claimFromReading();
 }
 
 /* ---------- opening files ---------- */
@@ -2081,7 +2190,8 @@ async function openFile(f){
 /* ---------- wiring ---------- */
 const pick=()=>$('#fileInput').click();
 $('#openBtn').onclick=pick;$('#openTop').onclick=pick;
-$('#fileInput').onchange=e=>{openFile(e.target.files[0]);e.target.value=''};
+$('#fileInput').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f){pendingReading=null;return}openFile(f)};
+$('#fileInput').addEventListener('cancel',()=>{pendingReading=null});
 $('#libraryBtn').onclick=showLibrary;
 function closeBackupMenu(){$('#backupMenu').hidden=true;$('#backupMenuBtn').setAttribute('aria-expanded','false')}
 $('#backupMenuBtn').onclick=()=>{
