@@ -101,6 +101,14 @@ button,select,input,textarea{font:inherit;color:inherit}
 .nav{display:flex;gap:2px;flex-wrap:wrap}
 .hbtn{min-height:46px;padding:0 12px;border-radius:12px;border:0;background:transparent;font-weight:700;font-size:16px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
 .hbtn:hover{background:var(--chip)}
+.menu-wrap{position:relative}
+.hmenu{position:absolute;right:0;top:calc(100% + 6px);z-index:26;width:min(320px,calc(100vw - 24px));background:var(--sheet);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:6px;display:grid;gap:2px}
+.hmenu button{all:unset;box-sizing:border-box;cursor:pointer;display:grid;gap:2px;padding:12px 14px;border-radius:10px}
+.hmenu button:hover,.hmenu button:focus-visible{background:var(--chip)}
+.hmenu button:focus-visible{outline:3px solid var(--accent)}
+.hmenu b{font-size:17px}
+.hmenu span{font-size:14px;color:var(--muted)}
+.hmenu .fine{padding:4px 14px 8px;font-size:14px}
 .count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:14px;display:inline-grid;place-items:center;font-variant-numeric:tabular-nums}
 body[data-view="library"] #contentsBtn,body[data-view="library"] #notesBtn,body[data-view="library"] #aiBtn,body[data-view="library"] #padBtn,body[data-view="library"] .player{display:none}
 @media (min-width:1180px){#contentsBtn{display:none}}
@@ -338,7 +346,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
   .bar{position:static}
   .bar-in{padding-block:6px}
   .brand{display:none}
-  .nav{width:100%;justify-content:space-between;flex-wrap:nowrap}
+  .nav{width:100%;justify-content:center;flex-wrap:wrap;gap:0 2px}
   .hbtn{padding:0 8px;font-size:15px;gap:6px}
   .hbtn .i{display:none}
   #whereLeft{font-size:14px}
@@ -366,6 +374,14 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
       <button class="hbtn" id="notesBtn" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/></svg>Notes <span class="count" id="notesCount" hidden></span></button>
       <button class="hbtn" id="padBtn" aria-expanded="false" aria-controls="pad"><svg class="i" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>Notepad</button>
       <button class="hbtn" id="aiBtn" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z"/></svg>AI</button>
+      <div class="menu-wrap">
+        <button class="hbtn" id="backupMenuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="backupMenu"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/></svg>Backup</button>
+        <div class="hmenu" id="backupMenu" role="menu" hidden>
+          <button role="menuitem" id="hmSave"><b>Save a backup</b><span>Papers, highlights, notes, AI results and settings, in one file</span></button>
+          <button role="menuitem" id="hmRestore"><b>Restore from a backup</b><span>Bring everything back from a backup file</span></button>
+          <p class="fine" id="hmInfo"></p>
+        </div>
+      </div>
       <button class="hbtn" id="libraryBtn"><svg class="i" viewBox="0 0 24 24"><path d="M5 4v16M10 4v16M14.5 5l4.5 15"/></svg>Library</button>
       <button class="hbtn" id="openTop"><svg class="i" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>Open</button>
     </nav>
@@ -2067,6 +2083,16 @@ const pick=()=>$('#fileInput').click();
 $('#openBtn').onclick=pick;$('#openTop').onclick=pick;
 $('#fileInput').onchange=e=>{openFile(e.target.files[0]);e.target.value=''};
 $('#libraryBtn').onclick=showLibrary;
+function closeBackupMenu(){$('#backupMenu').hidden=true;$('#backupMenuBtn').setAttribute('aria-expanded','false')}
+$('#backupMenuBtn').onclick=()=>{
+  const m=$('#backupMenu');
+  if(!m.hidden){closeBackupMenu();return}
+  closePop();closeSettings();backupInfo();$('#hmInfo').textContent=$('#bkInfo').textContent;
+  m.hidden=false;$('#backupMenuBtn').setAttribute('aria-expanded','true');$('#hmSave').focus();
+};
+$('#hmSave').onclick=()=>{closeBackupMenu();makeBackup()};
+$('#hmRestore').onclick=()=>{closeBackupMenu();$('#restoreInput').click()};
+document.addEventListener('pointerdown',e=>{if(!$('#backupMenu').hidden&&!e.target.closest('.menu-wrap'))closeBackupMenu()});
 $('#backupBtn').onclick=makeBackup;
 $('#restoreBtn').onclick=()=>$('#restoreInput').click();
 $('#restoreInput').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)restoreBackup(f)};
@@ -2109,6 +2135,7 @@ $('#pBigger').onclick=()=>changeFs(2);$('#pSmaller').onclick=()=>changeFs(-2);
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
+    if(!$('#backupMenu').hidden){closeBackupMenu();$('#backupMenuBtn').focus();return}
     if(rangeStart){cancelPicking();setStatus('');return}
     if(!$('#zoom').hidden){closeZoom();return}
     if(!$('#noteDialog').hidden){closeNote();return}
