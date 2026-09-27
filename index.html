@@ -77,6 +77,14 @@
 :root[data-scheme="contrast"] .sheet{border:2px solid var(--line)}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
+/* phones and tablets: 16px+ form text stops iOS from zooming in, and keyboard help is hidden without a keyboard */
+@media (pointer:coarse){#voice,input,select,textarea{font-size:max(16px,1em)}.pad textarea{font-size:max(16px,calc(var(--fs)*.82))}}
+html[data-touch-only="1"] .keys{display:none}
+.device-tips{background:var(--chip);border-radius:14px;padding:12px 14px;display:grid;gap:6px}
+.device-tips b{font-size:15px}
+.device-tips ul{margin:0;padding-left:1.1em;font-size:15px;color:var(--muted);display:grid;gap:4px}
+.install-tip{background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:16px;padding:14px 16px;display:grid;gap:8px}
+.install-tip p{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:18px;line-height:1.5;-webkit-font-smoothing:antialiased}
 button,select,input,textarea{font:inherit;color:inherit}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
@@ -137,7 +145,7 @@ body[data-view="library"] #contentsBtn,body[data-view="library"] #notesBtn,body[
 .sec-title{font-family:var(--display);font-weight:600;font-size:1.15em;line-height:1.3;margin:0 0 .55em;text-wrap:balance}
 .sec p{margin:0 0 1em;line-height:1.72}
 .s{cursor:pointer;border-radius:5px;padding:.05em .12em;margin:0 -.12em;-webkit-box-decoration-break:clone;box-decoration-break:clone;transition:background-color .2s}
-.s:hover{background:var(--chip)}
+@media (hover:hover){.s:hover{background:var(--chip)}}
 .s.hl{background:var(--hl);box-shadow:inset 0 -2px 0 var(--hl-line)}
 .s.on{background:var(--mark);color:var(--mark-ink)}
 .s.on.hl{box-shadow:inset 0 -3px 0 var(--hl-line)}
@@ -419,6 +427,10 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
     <h1 class="lib-title" id="libTitle">Your papers</h1>
     <button class="btn quiet" id="backToReading" hidden>Back to reading</button>
   </div>
+  <div class="install-tip" id="installTip" hidden>
+    <p id="installText"></p>
+    <div class="row"><button class="btn sm quiet" id="installHide">Got it</button></div>
+  </div>
   <div class="open-card">
     <p>Open a PDF, or drag one onto this page. It will be saved here so you can come back to it.</p>
     <div class="row">
@@ -440,7 +452,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
   </section>
   <section class="backup" aria-labelledby="bkHead">
     <h2 id="bkHead">Backup</h2>
-    <p class="fine">Your papers, places, highlights, notes and settings are saved in this browser on this device. Clearing browsing data erases them. Save a backup now and then, and keep the file somewhere safe like OneDrive. You can restore it here, or on another device.</p>
+    <p class="fine">Your papers, places, highlights, notes and settings are saved in this browser on this device. Clearing browsing data erases them. Save a backup now and then, and keep the file somewhere safe like <span class="cloudName">OneDrive</span>. You can restore it here, or on another device.</p>
     <p class="fine" id="bkInfo"></p>
     <div class="row"><button class="btn" id="backupBtn">Save a backup</button><button class="btn quiet" id="restoreBtn">Restore from a backup</button></div>
     <input type="file" id="restoreInput" accept=".json,application/json" hidden>
@@ -485,6 +497,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
     <div class="field"><span class="lab" id="sizeLab">Text size <output id="sizeOut"></output></span><div class="row" role="group" aria-labelledby="sizeLab"><button class="btn sm" id="smaller" aria-label="Smaller text">A−</button><button class="btn sm" id="bigger" aria-label="Larger text">A+</button></div></div>
   </div>
   <p class="fine" id="voiceHint" hidden></p>
+  <div class="device-tips" id="deviceTips" hidden><b id="deviceTipsHead">Tips for this device</b><ul id="deviceTipsList"></ul></div>
   <div class="opts">
     <label class="check"><input type="checkbox" id="optTitles" checked>Read section titles</label>
     <label class="check"><input type="checkbox" id="optCaps" checked>Read figure and table captions at the end</label>
@@ -526,7 +539,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
     <button class="btn sm" id="padDictate" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg><span>Dictate</span></button>
     <button class="btn sm quiet" id="padQuote">Add the sentence being read</button>
   </div>
-  <p class="fine" id="padHint">Type, or dictate. On a Surface you can also click in the notepad and press the Windows key + H to use Windows voice typing.</p>
+  <p class="fine" id="padHint">Type, or dictate.</p>
   <p class="pad-interim" id="padInterim" aria-live="polite" hidden></p>
   <label for="padText" class="sr">Notes for this paper</label>
   <textarea id="padText" placeholder="Your notes for this paper. They save as you type."></textarea>
@@ -1071,6 +1084,44 @@ function setStatus(msg,err,sticky){
   s.textContent=msg||'';s.classList.toggle('err',!!err);
   if(msg && !err && !sticky) statusTimer=setTimeout(()=>{if(s.textContent===msg)s.textContent=''},9000);
 }
+
+/* ---------- which device is this? ---------- */
+const PLATFORM=(()=>{
+  const ua=navigator.userAgent||'',p=(navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'';
+  if(/Android/i.test(ua)||/Android/i.test(p)) return 'android';
+  const touch=navigator.maxTouchPoints>1||matchMedia('(pointer: coarse)').matches;
+  if(/iPhone|iPad|iPod/.test(ua)||(/Mac/.test(p+ua)&&touch)) return 'ios'; // iPads report themselves as Macs
+  if(/Mac/.test(p)||/Macintosh|Mac OS X/.test(ua)) return 'mac';
+  if(/Win/.test(p)||/Windows/.test(ua)) return 'windows';
+  if(/CrOS/.test(ua)) return 'chromeos';
+  return 'other';
+})();
+const IS_EDGE=/Edg\//.test(navigator.userAgent||'');
+const TOUCH_ONLY=matchMedia('(hover: none) and (pointer: coarse)').matches;
+const IN_FRAME=(()=>{try{return window.self!==window.top}catch(e){return true}})();
+const STANDALONE=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+document.documentElement.dataset.platform=PLATFORM;
+if(TOUCH_ONLY) document.documentElement.dataset.touchOnly='1';
+const DEVICE={
+  windows:{name:'Windows',cloud:'OneDrive',
+    dictate:'On Windows, click in the notepad and press the Windows key + H to use Windows voice typing.',
+    voices:IS_EDGE?'':'For the most natural voices, open this page in Microsoft Edge and choose a voice marked “Natural”.',
+    tips:['Voices marked “Natural” sound best; they need an internet connection.','Install it as an app in Edge: ⋯ menu → Apps → Install this site as an app.','Press P for the notepad, H to highlight, Space to play or pause.']},
+  ios:{name:'iPhone or iPad',cloud:'iCloud Drive',
+    dictate:'Tap in the notepad, then tap the microphone on the keyboard to dictate.',
+    voices:'For better voices, open Settings → Accessibility → Spoken Content → Voices → English, download a voice marked Premium or Enhanced (Tessa is South African), then reopen this page.',
+    tips:['Reading stops if the screen locks or you switch apps; the app keeps the screen awake while it reads and picks up where it stopped when you come back.','Add it to your Home Screen (Share → Add to Home Screen). Safari can clear saved papers from websites you haven’t opened for a week; Home Screen apps keep them.','To open a PDF from Files or iCloud Drive, use Open a paper.']},
+  mac:{name:'Mac',cloud:'iCloud Drive',
+    dictate:'On a Mac, click in the notepad and press the Fn (globe) key twice to dictate.',
+    voices:'For better voices, open System Settings → Accessibility → Spoken Content → System voice → Manage Voices, download an Enhanced or Premium English voice, then reopen this page.',
+    tips:['In Safari, add it to the Dock: File → Add to Dock.','Press P for the notepad, H to highlight, Space to play or pause.']},
+  android:{name:'Android',cloud:'Google Drive',
+    dictate:'Tap in the notepad, then tap the microphone on the keyboard to dictate.',
+    voices:'For better voices, open Settings, search for “Text-to-speech output”, choose Speech Services by Google, install English voice data, then reopen this page.',
+    tips:['Reading stops if the screen locks or you switch apps; the app keeps the screen awake while it reads and picks up where it stopped when you come back.','Install it: Chrome ⋮ menu → Add to Home screen (or Install app).','Chrome usually lists one voice per language; the voice you pick in Android’s text-to-speech settings is the one used.']},
+  chromeos:{name:'Chromebook',cloud:'Google Drive',dictate:'Click in the notepad and press Search + D to dictate.',voices:'',tips:['Press P for the notepad, H to highlight, Space to play or pause.']},
+  other:{name:'this device',cloud:'a cloud drive',dictate:'Use your keyboard’s dictation to speak into the notepad.',voices:'',tips:[]}
+}[PLATFORM];
 
 /* ---------- saved library (IndexedDB in this browser) ---------- */
 const mem={meta:new Map(),docs:new Map(),state:new Map()};
@@ -1640,20 +1691,23 @@ function saveSettings(){store.set('pol-settings',{rate,voice:voice&&voice.name,f
 function voiceHint(){
   const h=$('#voiceHint');
   if(voices.some(v=>/natural|neural|premium|enhanced/i.test(v.name))){h.hidden=true;return}
-  const ua=navigator.userAgent;h.hidden=false;
-  if(/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1)) h.textContent='For better voices, open Settings → Accessibility → Spoken Content → Voices → English, download a voice marked Premium or Enhanced, then reopen this page.';
-  else if(/Android/.test(ua)) h.textContent='For better voices, open Settings, search for “Text-to-speech output”, choose Speech Services by Google, install English voice data, then reopen this page.';
-  else h.textContent='For the most natural voices, open this page in Microsoft Edge and choose a voice marked “Natural”.';
+  h.textContent=DEVICE.voices;h.hidden=!DEVICE.voices;
 }
 function loadVoices(){
   if(!synth) return;
   voices=synth.getVoices().slice();
   if(!voices.length) return;
-  const score=v=>(/natural|neural|premium|enhanced|online/i.test(v.name)?0:4)+(/^en/i.test(v.lang)?0:2)+(/^en-US/i.test(v.lang)?0:1);
+  const score=v=>(/natural|neural|premium|enhanced|online|network/i.test(v.name)?0:4)+(/^en/i.test(v.lang)?0:2)+(/^en[-_](ZA|US|GB)/i.test(v.lang)?0:1);
   voices.sort((a,b)=>score(a)-score(b)||a.name.localeCompare(b.name));
   // default voice: Leah (South Africa) when this device has it
   let i=voices.findIndex(v=>v.name===saved.voice);
-  if(i<0) i=voices.findIndex(v=>/\bLeah\b/i.test(v.name)&&/en-ZA/i.test(v.lang));
+  if(i<0) i=voices.findIndex(v=>/\bLeah\b/i.test(v.name)&&/en[-_]ZA/i.test(v.lang));
+  if(i<0) i=voices.findIndex(v=>/en[-_]ZA/i.test(v.lang)&&/premium|enhanced|natural/i.test(v.name));
+  if(i<0) i=voices.findIndex(v=>/en[-_]ZA/i.test(v.lang));
+  if(i<0) i=voices.findIndex(v=>/^en/i.test(v.lang)&&/premium|enhanced|natural|neural/i.test(v.name));
+  if(i<0) i=voices.findIndex(v=>v.default&&/^en/i.test(v.lang));
+  if(i<0){const nl=(navigator.language||'').split('@')[0].toLowerCase().replace('_','-');i=voices.findIndex(v=>v.lang.toLowerCase().replace('_','-')===nl&&/^en/i.test(v.lang))}
+  if(i<0) i=voices.findIndex(v=>/^en/i.test(v.lang));
   if(i<0) i=0;
   voice=voices[i];
   renderVoiceSelect();
@@ -1960,7 +2014,7 @@ let rec=null,dictating=false;
 function stopDictation(){dictating=false;if(rec){try{rec.stop()}catch(_){}}$('#padDictate').setAttribute('aria-pressed','false');$('#padDictate span').textContent='Dictate';$('#padInterim').hidden=true}
 function dictationBlocked(){
   stopDictation();
-  $('#padHint').textContent='This page can’t use the microphone here. Click in the notepad and press the Windows key + H to dictate with Windows voice typing instead.';
+  $('#padHint').textContent='This page can’t use the microphone directly. '+DEVICE.dictate;
   $('#padHint').style.color='var(--err)';$('#padText').focus();
 }
 function startDictation(){
@@ -2272,6 +2326,27 @@ window.addEventListener('dragleave',()=>{dragDepth=Math.max(0,dragDepth-1);if(!d
 window.addEventListener('dragover',e=>e.preventDefault());
 window.addEventListener('drop',e=>{e.preventDefault();dragDepth=0;drop.hidden=true;const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(!f)return;if(/\.json$/i.test(f.name))restoreBackup(f);else openFile(f)});
 window.addEventListener('beforeunload',()=>{saveNow();if(synth)synth.cancel()});
+
+/* ---------- device-specific help ---------- */
+(function applyDevice(){
+  $('#padHint').textContent='Type, or dictate. '+DEVICE.dictate;
+  $$('.cloudName').forEach(x=>x.textContent=DEVICE.cloud);
+  if(DEVICE.tips.length){$('#deviceTips').hidden=false;$('#deviceTipsHead').textContent='Tips for '+DEVICE.name;DEVICE.tips.forEach(t=>$('#deviceTipsList').append(el('li',null,t)))}
+  // installing only makes sense for the real website on a phone or tablet, not inside the Claude viewer
+  const wantsInstall=(PLATFORM==='ios'||PLATFORM==='android')&&!IN_FRAME&&!STANDALONE&&(location.protocol==='https:'||location.hostname==='localhost')&&!store.get('pol-installHidden',false);
+  if(wantsInstall){
+    $('#installText').textContent=PLATFORM==='ios'
+      ?'Tip: add Paper Out Loud to your Home Screen (Share → Add to Home Screen). It opens like an app, and Safari won’t clear your saved papers if you don’t use it for a while.'
+      :'Tip: install Paper Out Loud (Chrome ⋮ menu → Add to Home screen). It opens like an app with its own icon.';
+    $('#installTip').hidden=false;
+  }
+  $('#installHide').onclick=()=>{$('#installTip').hidden=true;store.set('pol-installHidden',true)};
+})();
+// phones pause speech when the screen locks or the app is switched: pick up the same sentence on return
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden||!playing||!synth) return;
+  setTimeout(()=>{if(!playing)return;token++;try{synth.cancel()}catch(_){}setTimeout(speak,150)},400); // always restart the sentence: iOS can leave speech paused
+});
 
 /* ---------- start ---------- */
 (async function init(){
