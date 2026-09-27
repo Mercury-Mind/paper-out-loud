@@ -102,7 +102,7 @@ button,select,input,textarea{font:inherit;color:inherit}
 .hbtn{min-height:46px;padding:0 12px;border-radius:12px;border:0;background:transparent;font-weight:700;font-size:16px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
 .hbtn:hover{background:var(--chip)}
 .count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:14px;display:inline-grid;place-items:center;font-variant-numeric:tabular-nums}
-body[data-view="library"] #contentsBtn,body[data-view="library"] #notesBtn,body[data-view="library"] #aiBtn,body[data-view="library"] .player{display:none}
+body[data-view="library"] #contentsBtn,body[data-view="library"] #notesBtn,body[data-view="library"] #aiBtn,body[data-view="library"] #padBtn,body[data-view="library"] .player{display:none}
 @media (min-width:1180px){#contentsBtn{display:none}}
 
 .status{max-width:1180px;margin:0 auto;padding:0 24px;font-size:17px;color:var(--muted)}
@@ -246,10 +246,26 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
 .drawer-head h2{font-family:var(--display);font-weight:600;font-size:24px;margin:0}
 .nlist{list-style:none;margin:0;padding:0;display:grid;gap:12px}
 .nitem{border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:8px}
+.nsec-h{font-family:var(--display);font-weight:600;font-size:19px;margin:6px 0 10px}
+.nitem .ntext.ai-prev{border-left-color:var(--line);color:var(--muted);max-height:4.6em;overflow:hidden}
 .nsec{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
 .nquote{margin:0;font-size:17px;line-height:1.5}
 .nquote.is-hl span{background:var(--hl);box-shadow:inset 0 -2px 0 var(--hl-line);-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 .1em}
 .ntext{margin:0;font-size:17px;line-height:1.5;padding-left:12px;border-left:3px solid var(--accent);white-space:pre-wrap}
+.pad{position:fixed;z-index:18;right:0;top:calc(env(safe-area-inset-top,0px) + 66px);bottom:calc(env(safe-area-inset-bottom,0px) + 120px);width:min(400px,calc(100vw - 24px));background:var(--sheet);border:1px solid var(--line);border-right:0;border-radius:20px 0 0 20px;box-shadow:var(--shadow);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.pad textarea{flex:1;min-height:120px;width:100%;resize:none;padding:14px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--ink);font-size:calc(var(--fs)*.82);line-height:1.55}
+.pad textarea:focus{border-color:var(--accent);outline:none}
+.pad .drawer-head h2{font-size:22px}
+#padDictate[aria-pressed="true"]{background:var(--err);border-color:var(--err);color:var(--sheet)}
+.pad-interim{margin:0;padding:8px 12px;border-radius:10px;background:var(--chip);font-style:italic;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (min-width:1100px){
+  body.pad-open .read-wrap{margin-right:400px;max-width:none}
+  body.pad-open .player-in{margin-right:410px}
+}
+@media (max-width:1099px){.pad{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 110px);height:min(62vh,520px);width:calc(100vw - 16px);right:8px;border-right:1px solid var(--line);border-radius:20px}}
+@media (max-width:720px){.pad{bottom:calc(env(safe-area-inset-bottom,0px) + 150px);height:min(55vh,460px)}}
+@media (max-width:560px){#openTop{display:none}}
 .ai-drawer{width:min(640px,calc(100vw - 24px))}
 .ai-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .ai-act{display:grid;gap:4px;text-align:left;padding:14px 16px;border:1.5px solid var(--line);border-radius:16px;background:var(--sheet);cursor:pointer;min-height:84px;align-content:start}
@@ -278,6 +294,8 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
 .topics{display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:0;list-style:none}
 .topics li{background:var(--chip);border-radius:999px;padding:4px 12px;margin:0}
 @media (max-width:560px){.ai-actions{grid-template-columns:1fr}}
+.picking #docBody .s{cursor:crosshair}
+.picking #docBody .s.pick-start{outline:3px dashed var(--accent);outline-offset:2px}
 .pop{position:fixed;z-index:28;background:var(--sheet);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:6px;display:grid;gap:2px;width:250px}
 .pop button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;font-size:18px;font-weight:700}
 .pop button:hover,.pop button:focus-visible{background:var(--chip)}
@@ -346,6 +364,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
     <nav class="nav" aria-label="Main">
       <button class="hbtn" id="contentsBtn" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>Contents</button>
       <button class="hbtn" id="notesBtn" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/></svg>Notes <span class="count" id="notesCount" hidden></span></button>
+      <button class="hbtn" id="padBtn" aria-expanded="false" aria-controls="pad"><svg class="i" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>Notepad</button>
       <button class="hbtn" id="aiBtn" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z"/></svg>AI</button>
       <button class="hbtn" id="libraryBtn"><svg class="i" viewBox="0 0 24 24"><path d="M5 4v16M10 4v16M14.5 5l4.5 15"/></svg>Library</button>
       <button class="hbtn" id="openTop"><svg class="i" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>Open</button>
@@ -443,6 +462,8 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
     <span><kbd>←</kbd> <kbd>→</kbd></span><span>Previous or next sentence</span>
     <span><kbd>[</kbd> <kbd>]</kbd></span><span>Previous or next section</span>
     <span><kbd>H</kbd> <kbd>N</kbd></span><span>Highlight, or add a note to, the sentence being read</span>
+    <span><kbd>P</kbd></span><span>Open or close the notepad</span>
+    <span><kbd>Shift</kbd> + click</span><span>Highlight every sentence between two you click</span>
   </div>
   <p class="fine">Equations, tables and figures stay in the text as pictures but aren’t read aloud. Click one to enlarge it.</p>
   <div hidden>
@@ -457,10 +478,27 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
 <aside class="drawer right" id="notesDrawer" aria-labelledby="notesHead" hidden>
   <div class="drawer-head"><h2 id="notesHead">Highlights and notes</h2><button class="btn quiet sm drawer-close" aria-label="Close notes"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <p class="fine" id="notesEmpty">Nothing yet. Click any sentence to highlight it or add a note, or press H while listening to highlight the sentence being read.</p>
+  <section id="aiNotes" hidden aria-labelledby="aiNotesHead">
+    <h3 class="nsec-h" id="aiNotesHead">From AI tools</h3>
+    <ul class="nlist" id="aiNotesList"></ul>
+  </section>
+  <h3 class="nsec-h" id="hlNotesHead" hidden>Highlights and notes</h3>
   <ol class="nlist" id="notesList"></ol>
   <div class="row" id="notesActions" hidden><button class="btn" id="exportBtn">Save as a file</button><button class="btn quiet" id="copyBtn">Copy all</button></div>
 </aside>
 
+<aside class="pad" id="pad" aria-labelledby="padHead" hidden>
+  <div class="drawer-head"><h2 id="padHead">Notepad</h2><button class="btn quiet sm" id="padClose" aria-label="Close notepad"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="row">
+    <button class="btn sm" id="padDictate" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg><span>Dictate</span></button>
+    <button class="btn sm quiet" id="padQuote">Add the sentence being read</button>
+  </div>
+  <p class="fine" id="padHint">Type, or dictate. On a Surface you can also click in the notepad and press the Windows key + H to use Windows voice typing.</p>
+  <p class="pad-interim" id="padInterim" aria-live="polite" hidden></p>
+  <label for="padText" class="sr">Notes for this paper</label>
+  <textarea id="padText" placeholder="Your notes for this paper. They save as you type."></textarea>
+  <p class="fine" id="padSaved"></p>
+</aside>
 <aside class="drawer right ai-drawer" id="aiDrawer" aria-labelledby="aiHead" hidden>
   <div class="drawer-head"><h2 id="aiHead">AI tools</h2><button class="btn quiet sm drawer-close" aria-label="Close AI tools"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <p class="fine" id="aiIntro">Uses your Claude account. Answers are based only on this paper and are saved with it.</p>
@@ -487,6 +525,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
   <button role="menuitem" id="popPlay"><svg class="i" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>Read from here</span></button>
   <button role="menuitem" id="popHl"><svg class="i" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5L10 19H5v-5z"/><path d="M4 22h16"/></svg><span>Highlight</span></button>
   <button role="menuitem" id="popNote"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/><path d="M8.5 9h7"/></svg><span>Add note</span></button>
+  <button role="menuitem" id="popRange"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Highlight several sentences…</span></button>
 </div>
 
 <div class="modal-back" id="noteDialog" hidden>
@@ -1255,18 +1294,18 @@ function toggleHl(n,announce){
   n=String(n);
   const on=!cur.state.highlights[n];
   if(on) cur.state.highlights[n]=Date.now(); else delete cur.state.highlights[n];
-  decorate(spanOf(n));scheduleSave();renderNotes();
+  decorate(spanOf(n));saveNow();renderNotes();
   const e=queue[idx];if(e&&e.dataset.n===n)$('#hlBtn').setAttribute('aria-pressed',on?'true':'false');
   if(announce) setStatus(on?'Highlighted.':'Highlight removed.');
 }
 let noteN=null,resumeAfter=false;
-function openNote(n){
+function openNote(n,quote){
   if(!cur) return;
   closePop();closeDrawers();closeSettings();
   resumeAfter=playing;if(playing)pause();
   noteN=String(n);
   const sp=spanOf(noteN);
-  $('#noteQuote').textContent=sp?sp.textContent:'';
+  $('#noteQuote').textContent=quote||(groupFor(noteN)?groupFor(noteN).text:(sp?sp.textContent:''));
   $('#noteText').value=(cur.state.notes[noteN]&&cur.state.notes[noteN].text)||'';
   $('#noteDelete').hidden=!$('#noteText').value;
   $('#noteDialog').hidden=false;
@@ -1288,38 +1327,70 @@ function markedNs(){
   const ks=new Set([...Object.keys(cur.state.highlights),...Object.keys(cur.state.notes).filter(k=>cur.state.notes[k].text)]);
   return [...ks].map(Number).sort((a,b)=>a-b);
 }
-function renderNotes(){
-  const ns=markedNs();
-  const c=$('#notesCount');c.textContent=ns.length;c.hidden=!ns.length;
-  $('#notesEmpty').hidden=!!ns.length;$('#notesActions').hidden=!ns.length;
-  const list=$('#notesList');list.innerHTML='';
-  for(const n of ns){
+// consecutive highlighted sentences in the same section count as one highlight; a note ends a group
+function markedGroups(){
+  const groups=[];
+  for(const n of markedNs()){
     const sp=spanOf(n);if(!sp) continue;
+    const g=groups[groups.length-1];
+    const lastNote=g&&cur.state.notes[g.last]&&cur.state.notes[g.last].text;
+    if(g&&!lastNote&&cur.state.highlights[n]&&cur.state.highlights[g.last]&&n===g.last+1&&spanOf(g.last).closest('.sec')===sp.closest('.sec')){g.ns.push(n);g.last=n;g.spans.push(sp)}
+    else groups.push({ns:[n],last:n,spans:[sp]});
+  }
+  groups.forEach(g=>{g.text=g.spans.map(x=>x.textContent).join(' ');g.hl=!!cur.state.highlights[g.ns[0]]});
+  return groups;
+}
+function groupFor(n){n=+n;return markedGroups().find(g=>g.ns.includes(n)&&g.ns.length>1)||null}
+function aiKindsSaved(){return cur&&cur.state.ai?['summary','notes','insights','related'].filter(k=>cur.state.ai[k]):[]}
+function renderNotes(){
+  const groups=markedGroups(),aiks=aiKindsSaved(),ns=groups;
+  const hasPad=!!(cur&&cur.state.pad&&cur.state.pad.text.trim());
+  const total=groups.length+aiks.length;
+  const c=$('#notesCount');c.textContent=total;c.hidden=!total;
+  $('#notesEmpty').hidden=!!total;$('#notesActions').hidden=!(total||hasPad);
+  $('#aiNotes').hidden=!aiks.length;$('#hlNotesHead').hidden=!(aiks.length&&ns.length);
+  const al=$('#aiNotesList');al.innerHTML='';
+  for(const k of aiks){
+    const it=cur.state.ai[k],li=el('li','nitem');
+    li.append(el('div','nsec',AI_KINDS[k].title+' · made '+rel(it.at)));
+    const prev=(k==='related'?'Builds on: '+((it.data&&it.data.builds_on)||[]).map(x=>x.title).join('; '):String(it.text).split('\n').filter(l=>!/^\s*#/.test(l)).map(l=>l.replace(/^\s*[-•*]\s+/,'').replace(/\*\*/g,'')).join(' ')).replace(/\s+/g,' ').trim();
+    li.append(el('p','ntext ai-prev',prev.slice(0,260)+(prev.length>260?'…':'')));
+    const row=el('div','row');const open=el('button','btn sm','Open');
+    open.onclick=()=>{openDrawer('aiDrawer',$('#aiBtn'));aiKind=k;renderAiPanel()};
+    row.append(open);li.append(row);al.append(li);
+  }
+  const list=$('#notesList');list.innerHTML='';
+  for(const g of groups){
+    const sp=g.spans[0],n=g.last;
     const li=el('li','nitem');
-    li.append(el('div','nsec',sp.closest('.sec').dataset.name));
-    const q=el('blockquote','nquote'+(cur.state.highlights[n]?' is-hl':''));q.append(el('span',null,sp.textContent));li.append(q);
+    li.append(el('div','nsec',sp.closest('.sec').dataset.name+(g.ns.length>1?' · '+g.ns.length+' sentences':'')));
+    const q=el('blockquote','nquote'+(g.hl?' is-hl':''));q.append(el('span',null,g.text));li.append(q);
     const note=cur.state.notes[n];
     if(note&&note.text) li.append(el('p','ntext',note.text));
     const row=el('div','row');
     const goB=el('button','btn sm','Go to sentence');
     goB.onclick=()=>{closeDrawers();const i=queue.indexOf(sp);if(i>=0){idx=i;playing?restart():mark(true)}else sp.scrollIntoView({block:'center',behavior:smooth()})};
-    const ed=el('button','btn sm quiet',note&&note.text?'Edit note':'Add note');ed.onclick=()=>openNote(n);
+    const ed=el('button','btn sm quiet',note&&note.text?'Edit note':'Add note');ed.onclick=()=>openNote(n,g.ns.length>1?g.text:null);
     row.append(goB,ed);
-    if(cur.state.highlights[n]){const rm=el('button','btn sm quiet','Remove highlight');rm.onclick=()=>toggleHl(n);row.append(rm)}
+    if(g.hl){const rm=el('button','btn sm quiet','Remove highlight');rm.onclick=()=>{if(g.ns.length>1)hlRange(g.spans);else toggleHl(n)};row.append(rm)}
     li.append(row);list.append(li);
   }
 }
 function notesText(){
-  const lines=[cur.doc.title,'Highlights and notes from Paper Out Loud, '+new Date().toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'}),''];
+  const lines=[cur.doc.title,'Highlights, notes and AI results from Paper Out Loud, '+new Date().toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'}),''];
   let lastSec='';
-  for(const n of markedNs()){
-    const sp=spanOf(n);if(!sp) continue;
-    const secName=sp.closest('.sec').dataset.name;
+  for(const g of markedGroups()){
+    const secName=g.spans[0].closest('.sec').dataset.name;
     if(secName!==lastSec){lines.push('','== '+secName+' ==','');lastSec=secName}
-    lines.push('“'+sp.textContent+'”');
-    const note=cur.state.notes[n];
+    lines.push('“'+g.text+'”');
+    const note=cur.state.notes[g.last];
     if(note&&note.text) lines.push('Note: '+note.text);
     lines.push('');
+  }
+  if(cur.state.pad&&cur.state.pad.text.trim()) lines.push('','==== NOTEPAD ====','',cur.state.pad.text.trim(),'');
+  for(const k of aiKindsSaved()){
+    lines.push('','==== '+AI_KINDS[k].title.toUpperCase()+' (made with AI) ====','');
+    lines.push(aiTextFor(k).split('\n').slice(2).join('\n').trim(),'');
   }
   return lines.join('\n');
 }
@@ -1368,6 +1439,9 @@ async function makeBackup(){
 function mergeState(a,b){
   const m={id:a.id,pos:a.pos||b.pos||0,highlights:Object.assign({},b.highlights,a.highlights),notes:Object.assign({},b.notes),include:Object.assign({},b.include,a.include)};
   for(const [k,v] of Object.entries(a.notes||{})){const o=m.notes[k];if(!o||(v.at||0)>=(o.at||0))m.notes[k]=v}
+  m.pad=((a.pad&&a.pad.at)||0)>=((b.pad&&b.pad.at)||0)?a.pad:b.pad;if(!m.pad)delete m.pad;
+  m.ai=Object.assign({},b.ai);
+  for(const [k,v] of Object.entries(a.ai||{})){const o=m.ai[k];if(!o||(v.at||0)>=(o.at||0))m.ai[k]=v}
   return m;
 }
 async function restoreBackup(file){
@@ -1406,16 +1480,36 @@ function copyNotes(){
 }
 
 /* ---------- sentence menu ---------- */
-let popFor=null,popReturn=null;
-function showPop(sp,x,y){
-  popFor=sp;popReturn=document.activeElement;
-  const n=sp.dataset.n;
+let popFor=null,popSpans=[],popReturn=null,rangeStart=null,lastClicked=null;
+// all readable sentences from a to b, in document order (skips hidden sections)
+function spansBetween(a,b){
+  const all=$$('#docBody .s').filter(x=>x.dataset.kind==='s'&&x.offsetParent!==null);
+  let i=all.indexOf(a),j=all.indexOf(b);if(i<0||j<0) return [a];
+  if(i>j)[i,j]=[j,i];
+  return all.slice(i,j+1);
+}
+function hlRange(spans){
+  if(!cur||!spans.length) return;
+  const allOn=spans.every(sp=>cur.state.highlights[sp.dataset.n]);
+  spans.forEach(sp=>{const n=sp.dataset.n;if(allOn)delete cur.state.highlights[n];else if(!cur.state.highlights[n])cur.state.highlights[n]=Date.now();decorate(sp)});
+  saveNow();renderNotes();
+  const e=queue[idx];if(e)$('#hlBtn').setAttribute('aria-pressed',cur.state.highlights[e.dataset.n]?'true':'false');
+  setStatus(allOn?'Highlight removed from '+plural(spans.length,'sentence')+'.':'Highlighted '+plural(spans.length,'sentence')+'.');
+}
+function cancelPicking(){rangeStart&&rangeStart.classList.remove('pick-start');rangeStart=null;document.body.classList.remove('picking')}
+function showPop(target,x,y,rect){
+  const spans=Array.isArray(target)?target:[target];
+  const sp=spans[0],multi=spans.length>1;
+  popFor=sp;popSpans=spans;popReturn=document.activeElement;
+  const last=spans[spans.length-1],ln=last.dataset.n;
   $('#popPlay').disabled=!queue.includes(sp);
-  $('#popHl span').textContent=cur.state.highlights[n]?'Remove highlight':'Highlight';
-  $('#popNote span').textContent=cur.state.notes[n]&&cur.state.notes[n].text?'Edit note':'Add note';
+  const allOn=spans.every(q=>cur.state.highlights[q.dataset.n]);
+  $('#popHl span').textContent=multi?(allOn?'Remove highlight from '+spans.length+' sentences':'Highlight '+spans.length+' sentences'):(allOn?'Remove highlight':'Highlight');
+  $('#popNote span').textContent=cur.state.notes[ln]&&cur.state.notes[ln].text?'Edit note':'Add note';
+  $('#popRange').hidden=multi;
   const pop=$('#pop');pop.hidden=false;
-  const rects=[...sp.getClientRects()];
-  const r=rects.find(q=>y>=q.top-2&&y<=q.bottom+2)||rects[rects.length-1]||sp.getBoundingClientRect();
+  const rects=[...last.getClientRects()];
+  const r=rect||rects.find(q=>y>=q.top-2&&y<=q.bottom+2)||rects[rects.length-1]||last.getBoundingClientRect();
   const pw=pop.offsetWidth,ph=pop.offsetHeight,vw=innerWidth,vh=innerHeight;
   const playerTop=document.querySelector('.player-in').getBoundingClientRect().top;
   let left=Math.min(Math.max(12,x-pw/2),vw-pw-12);
@@ -1424,15 +1518,43 @@ function showPop(sp,x,y){
   pop.style.left=left+'px';pop.style.top=top+'px';
   (queue.includes(sp)?$('#popPlay'):$('#popHl')).focus({preventScroll:true});
 }
-function closePop(){if($('#pop').hidden)return;$('#pop').hidden=true;popFor=null}
+function closePop(){if($('#pop').hidden)return;$('#pop').hidden=true;popFor=null;popSpans=[]}
 $('#popPlay').onclick=()=>{const sp=popFor;closePop();const i=queue.indexOf(sp);if(i<0)return;idx=i;playing?restart():play()};
-$('#popHl').onclick=()=>{const sp=popFor;closePop();toggleHl(sp.dataset.n)};
-$('#popNote').onclick=()=>{const sp=popFor;closePop();openNote(sp.dataset.n)};
+$('#popHl').onclick=()=>{const spans=popSpans.slice();closePop();try{getSelection().removeAllRanges()}catch(_){}if(spans.length>1)hlRange(spans);else toggleHl(spans[0].dataset.n)};
+$('#popNote').onclick=()=>{const spans=popSpans.slice();closePop();try{getSelection().removeAllRanges()}catch(_){}openNote(spans[spans.length-1].dataset.n,spans.length>1?spans.map(q=>q.textContent).join(' '):null)};
+$('#popRange').onclick=()=>{
+  const sp=popFor;closePop();cancelPicking();
+  rangeStart=sp;sp.classList.add('pick-start');document.body.classList.add('picking');
+  setStatus('Now click the last sentence you want to highlight. Press Escape to cancel.',false,true);
+};
 $('#docBody').addEventListener('click',e=>{
   const nb=e.target.closest('.note-btn');if(nb){openNote(nb.dataset.n);return}
   const sp=e.target.closest('.s');if(!sp) return;
-  if(window.getSelection&&String(window.getSelection()).length>2) return;
+  if(rangeStart){const a=rangeStart;cancelPicking();hlRange(spansBetween(a,sp));return}
+  if(e.shiftKey&&lastClicked&&lastClicked.isConnected&&lastClicked!==sp){try{getSelection().removeAllRanges()}catch(_){}showPop(spansBetween(lastClicked,sp),e.clientX,e.clientY);return}
+  if(window.getSelection&&String(window.getSelection()).length>2) return; // handled as a text selection
+  lastClicked=sp;
   showPop(sp,e.clientX,e.clientY);
+});
+// selecting text across several sentences (drag, or shift + arrow keys) offers to highlight them all
+function selectionSpans(){
+  const sel=window.getSelection&&getSelection();
+  if(!sel||sel.isCollapsed||!sel.rangeCount) return null;
+  const rg=sel.getRangeAt(0);
+  const spans=$$('#docBody .s').filter(x=>x.dataset.kind==='s'&&x.offsetParent!==null&&rg.intersectsNode(x));
+  return spans.length?{spans,rect:rg.getBoundingClientRect()}:null;
+}
+function offerSelection(x,y){
+  const got=selectionSpans();if(!got) return;
+  showPop(got.spans,x==null?got.rect.left+got.rect.width/2:x,y==null?got.rect.bottom:y,got.rect);
+}
+document.addEventListener('mouseup',e=>{if(e.shiftKey)return;if(e.target.closest&&e.target.closest('#pop,.player,.drawer,.pad,.panel,.modal-back'))return;setTimeout(()=>offerSelection(e.clientX,e.clientY),0)});
+$('#docBody').addEventListener('keyup',e=>{if(e.shiftKey)offerSelection()});
+let selTimer=null;
+document.addEventListener('selectionchange',()=>{ // phones and tablets: long-press selection
+  clearTimeout(selTimer);
+  if(!matchMedia('(pointer: coarse)').matches) return;
+  selTimer=setTimeout(()=>offerSelection(),700);
 });
 document.addEventListener('pointerdown',e=>{
   if(!$('#pop').hidden&&!e.target.closest('#pop')&&!e.target.closest('#docBody .s')) closePop();
@@ -1648,7 +1770,7 @@ function renderRelated(data){
   }
 }
 function relatedAsText(data){
-  const lines=['Related papers for: '+cur.doc.title,''];
+  const lines=['Related papers: '+cur.doc.title,''];
   (data.builds_on||[]).forEach(it=>{lines.push('- '+it.title+(it.authors||it.year?' ('+[it.authors,it.year].filter(Boolean).join(', ')+')':''));if(it.why)lines.push('  '+it.why)});
   if((data.topics||[]).length){lines.push('','Search for newer research:');data.topics.forEach(t=>lines.push('- '+t))}
   return lines.join('\n');
@@ -1703,6 +1825,7 @@ async function runAi(kind,fresh){
     }
     scheduleSave();
     aiBusy=false;
+    renderNotes();
     if(aiKind===kind) renderAiPanel();
     if(cur.state.ai[kind]&&cur.state.ai[kind].truncated) setStatus('The answer was cut short because it got too long.',true);
   }catch(e){
@@ -1740,17 +1863,71 @@ function readAi(){
   };
   if(synth.speaking||synth.pending){synth.cancel();setTimeout(next,80)}else next();
 }
-function aiPlainText(){
-  const saved=aiSaved(aiKind);if(!saved) return '';
-  if(aiKind==='related') return relatedAsText(saved.data);
-  return AI_KINDS[aiKind].title+': '+cur.doc.title+'\n\n'+saved.text.replace(/\*\*/g,'').replace(/^#{2,4}\s+/gm,'').trim();
+function aiTextFor(kind){
+  const saved=aiSaved(kind);if(!saved) return '';
+  if(kind==='related') return relatedAsText(saved.data);
+  return AI_KINDS[kind].title+': '+cur.doc.title+'\n\n'+saved.text.replace(/\*\*/g,'').replace(/^#{2,4}\s+/gm,'').trim();
 }
+function aiPlainText(){return aiTextFor(aiKind)}
 $$('.ai-act').forEach(b=>b.onclick=()=>runAi(b.dataset.kind,false));
 $('#aiRegen').onclick=()=>{if(aiKind)runAi(aiKind,true)};
 $('#aiRead').onclick=readAi;
 $('#aiStop').onclick=stopAiSpeech;
 $('#aiCopy').onclick=()=>{const text=aiPlainText();try{navigator.clipboard.writeText(text).then(()=>setStatus('Copied.'),()=>setStatus('Copying isn’t allowed here. Use “Save as a file” instead.',true))}catch(e){setStatus('Copying isn’t allowed here. Use “Save as a file” instead.',true)}};
 $('#aiSave').onclick=async()=>{const name=(cur.doc.title.replace(/[^\w\s-]/g,'').trim().slice(0,60)||'Paper')+' - '+AI_KINDS[aiKind].file+'.txt';const res=await saveFile(name,aiPlainText(),'text/plain');if(res==='saved')setStatus('Saved as a file.');else if(res==='failed')setStatus('The file couldn’t be saved here. Use “Copy” instead.',true)};
+
+/* ---------- notepad (free-form notes per paper) ---------- */
+let padTimer=null;
+function openPad(){if(!cur)return;closePop();$('#pad').hidden=false;document.body.classList.add('pad-open');$('#padBtn').setAttribute('aria-expanded','true');loadPad();$('#padText').focus()}
+function closePad(){stopDictation();$('#pad').hidden=true;document.body.classList.remove('pad-open');$('#padBtn').setAttribute('aria-expanded','false');savePadNow()}
+function loadPad(){const p=cur&&cur.state.pad;$('#padText').value=p?p.text:'';$('#padSaved').textContent=p&&p.at?'Saved '+rel(p.at)+'.':''}
+function savePadNow(){
+  clearTimeout(padTimer);padTimer=null;if(!cur)return;
+  const text=$('#padText').value;const old=cur.state.pad&&cur.state.pad.text||'';
+  if(text===old) return;
+  if(text.trim()) cur.state.pad={text,at:Date.now()}; else delete cur.state.pad;
+  scheduleSave();$('#padSaved').textContent=text.trim()?'Saved.':'';
+}
+function insertIntoPad(t){
+  const ta=$('#padText');const a=ta.selectionStart??ta.value.length,b=ta.selectionEnd??a;
+  const before=ta.value.slice(0,a),after=ta.value.slice(b);
+  const pre=before&&!/\s$/.test(before)?' ':'';
+  ta.value=before+pre+t+after;const pos=(before+pre+t).length;ta.setSelectionRange(pos,pos);
+  savePadNow();
+}
+$('#padBtn').onclick=()=>$('#pad').hidden?openPad():closePad();
+$('#padClose').onclick=closePad;
+$('#padText').addEventListener('input',()=>{$('#padSaved').textContent='Saving…';clearTimeout(padTimer);padTimer=setTimeout(savePadNow,500)});
+$('#padQuote').onclick=()=>{const e=queue[idx];if(!e)return;const sec=e.closest('.sec').dataset.name;insertIntoPad('\n“'+e.textContent+'” ('+sec+')\n');$('#padText').focus()};
+window.addEventListener('pagehide',savePadNow);
+// dictation: the browser's speech recognition where allowed; otherwise point to Windows voice typing
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,dictating=false;
+function stopDictation(){dictating=false;if(rec){try{rec.stop()}catch(_){}}$('#padDictate').setAttribute('aria-pressed','false');$('#padDictate span').textContent='Dictate';$('#padInterim').hidden=true}
+function dictationBlocked(){
+  stopDictation();
+  $('#padHint').textContent='This page can’t use the microphone here. Click in the notepad and press the Windows key + H to dictate with Windows voice typing instead.';
+  $('#padHint').style.color='var(--err)';$('#padText').focus();
+}
+function startDictation(){
+  if(!SR){dictationBlocked();return}
+  pause(); // stop reading so the microphone doesn't hear the voice
+  try{rec=new SR()}catch(e){dictationBlocked();return}
+  rec.continuous=true;rec.interimResults=true;rec.lang=navigator.language||'en-US';
+  rec.onresult=ev=>{
+    let fin='',interim='';
+    for(let i=ev.resultIndex;i<ev.results.length;i++){const t=ev.results[i][0].transcript;if(ev.results[i].isFinal)fin+=t;else interim+=t}
+    if(fin.trim()){const t=fin.trim();insertIntoPad(t.charAt(0).toUpperCase()+t.slice(1)+(/[.!?]$/.test(t)?' ':'. '))}
+    $('#padInterim').hidden=!interim;$('#padInterim').textContent=interim;
+  };
+  rec.onerror=ev=>{if(['not-allowed','service-not-allowed','audio-capture','network'].includes(ev.error))dictationBlocked()};
+  rec.onend=()=>{if(dictating){try{rec.start()}catch(_){stopDictation()}}};
+  let heard=false;rec.onaudiostart=rec.onstart=()=>{heard=true};
+  try{rec.start()}catch(e){dictationBlocked();return}
+  setTimeout(()=>{if(dictating&&!heard)dictationBlocked()},4000); // the browser never started listening
+  dictating=true;$('#padDictate').setAttribute('aria-pressed','true');$('#padDictate span').textContent='Stop dictating';
+}
+$('#padDictate').onclick=()=>dictating?stopDictation():startDictation();
 
 /* ---------- enlarged pictures ---------- */
 let zoomReturn=null,zoomScale=1;
@@ -1772,6 +1949,7 @@ function setView(v){
   $('#readerView').hidden=v!=='reader';$('#libraryView').hidden=v!=='library';
 }
 async function showLibrary(){
+  if(!$('#pad').hidden)closePad();
   pause();closePop();closeDrawers();closeSettings();saveNow();
   setView('library');await renderLibrary();window.scrollTo(0,0);
 }
@@ -1786,10 +1964,12 @@ async function renderLibrary(){
   for(const m of metas){
     const s=states.get(m.id)||blankState(m.id);
     const pct=m.total&&s.pos?Math.min(100,Math.round((s.pos+1)/m.total*100)):0;
-    const hls=Object.keys(s.highlights||{}).length,nts=Object.values(s.notes||{}).filter(x=>x.text).length;
+    const hk=Object.keys(s.highlights||{}).map(Number).sort((a,b)=>a-b);const hls=hk.filter((n,i)=>i===0||n!==hk[i-1]+1).length,nts=Object.values(s.notes||{}).filter(x=>x.text).length;
     const parts=['Opened '+rel(m.openedAt),pct?pct+'% listened':'Not started'];
     if(hls) parts.push(plural(hls,'highlight'));
     if(nts) parts.push(plural(nts,'note'));
+    const ais=Object.keys(s.ai||{}).length;if(ais) parts.push(plural(ais,'AI result'));
+    if(s.pad&&s.pad.text&&s.pad.text.trim()) parts.push('notepad');
     const li=el('li','lib-item');
     const open=el('button','lib-open');open.type='button';
     open.append(el('span','lib-name',m.title),el('span','lib-meta',parts.join(' · ')));
@@ -1817,9 +1997,11 @@ async function openPaper(id,o={}){
   const state=(await Store.get('state',id))||blankState(id);
   state.highlights=state.highlights||{};state.notes=state.notes||{};state.include=state.include||{};
   meta.openedAt=Date.now();Store.put('meta',meta);
+  if(!$('#pad').hidden)savePadNow();
   cur={id,meta,doc:rec.doc,state};
   if(aiCtl)aiCtl.abort();aiKind=null;aiBusy=false;
   setView('reader');
+  if(!$('#pad').hidden)loadPad();
   render();queue=[];idx=0;buildQueue();renderToc();renderNotes();
   if(state.pos>0){
     const i=queue.findIndex(q=>+q.dataset.n>=state.pos);
@@ -1927,6 +2109,7 @@ $('#pBigger').onclick=()=>changeFs(2);$('#pSmaller').onclick=()=>changeFs(-2);
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
+    if(rangeStart){cancelPicking();setStatus('');return}
     if(!$('#zoom').hidden){closeZoom();return}
     if(!$('#noteDialog').hidden){closeNote();return}
     if(!$('#pop').hidden){const r=popReturn;closePop();r&&r.focus&&r.focus();return}
@@ -1943,6 +2126,7 @@ document.addEventListener('keydown',e=>{
   else if(e.key===']') nextSec();
   else if(e.key==='[') prevSec();
   else if(e.key==='h'||e.key==='H'){const q=queue[idx];if(q)toggleHl(q.dataset.n,true)}
+  else if(e.key==='p'||e.key==='P'){e.preventDefault();$('#pad').hidden?openPad():closePad()}
   else if(e.key==='n'||e.key==='N'){const q=queue[idx];if(q){e.preventDefault();openNote(q.dataset.n)}}
 });
 const drop=$('#drop');let dragDepth=0;
