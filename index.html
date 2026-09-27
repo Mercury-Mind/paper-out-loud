@@ -1,0 +1,1599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}</style>
+<title>Paper Out Loud</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Literata:opsz,wght@7..72,500;7..72,600&display=swap">
+<style>
+:root{
+  --bg:#ECEFEB; --sheet:#FBFCFA; --ink:#1A201C; --muted:#535E57; --line:#D3DAD3;
+  --accent:#1E6A58; --accent-ink:#FFFFFF; --accent-soft:#DCEBE4; --chip:#E5EAE5;
+  --mark:#FBE38A; --mark-ink:#1A201C; --hl:#C8E7D6; --hl-line:#2C8A6D; --err:#A3321F;
+  --shadow:0 1px 2px rgba(20,32,26,.06),0 10px 30px rgba(20,32,26,.09);
+  --scrim:rgba(14,22,18,.38);
+  --pic-filter:none; --pic-blend:multiply;
+  --fs:23px;
+  --font:"Atkinson Hyperlegible",Verdana,"Segoe UI",system-ui,sans-serif;
+  --display:"Literata",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#101412; --sheet:#181D1A; --ink:#E7ECE8; --muted:#A6B1AA; --line:#2A332E;
+    --accent:#7FCBB3; --accent-ink:#0F1412; --accent-soft:#1F342C; --chip:#222925;
+    --mark:#F0D36A; --mark-ink:#111512; --hl:#24493C; --hl-line:#7FCBB3; --err:#FF9D8C;
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 12px 32px rgba(0,0,0,.4);
+    --scrim:rgba(0,0,0,.55);
+    --pic-filter:invert(1) hue-rotate(180deg) brightness(1.2) contrast(1.2); --pic-blend:screen;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#101412; --sheet:#181D1A; --ink:#E7ECE8; --muted:#A6B1AA; --line:#2A332E;
+  --accent:#7FCBB3; --accent-ink:#0F1412; --accent-soft:#1F342C; --chip:#222925;
+  --mark:#F0D36A; --mark-ink:#111512; --hl:#24493C; --hl-line:#7FCBB3; --err:#FF9D8C;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 12px 32px rgba(0,0,0,.4);
+  --scrim:rgba(0,0,0,.55);
+  --pic-filter:invert(1) hue-rotate(180deg) brightness(1.2) contrast(1.2); --pic-blend:screen;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:18px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* buttons */
+.btn{min-height:48px;padding:0 18px;border-radius:12px;border:1.5px solid var(--line);background:var(--sheet);font-weight:700;font-size:17px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.big{min-height:58px;font-size:19px;padding:0 26px}
+.btn.sm{min-height:42px;padding:0 14px;font-size:16px}
+.btn.quiet{border-color:transparent;background:transparent}
+.btn.quiet:hover{background:var(--chip)}
+.btn.danger{background:var(--err);border-color:var(--err);color:var(--sheet)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+/* header */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;background:var(--bg)}
+.bar-in{max-width:1180px;margin:0 auto;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:19px}
+.brand svg{width:30px;height:30px;flex:none}
+.nav{display:flex;gap:2px;flex-wrap:wrap}
+.hbtn{min-height:46px;padding:0 12px;border-radius:12px;border:0;background:transparent;font-weight:700;font-size:16px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.hbtn:hover{background:var(--chip)}
+.count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:14px;display:inline-grid;place-items:center;font-variant-numeric:tabular-nums}
+body[data-view="library"] #contentsBtn,body[data-view="library"] #notesBtn,body[data-view="library"] .player{display:none}
+@media (min-width:1180px){#contentsBtn{display:none}}
+
+.status{max-width:1180px;margin:0 auto;padding:0 24px;font-size:17px;color:var(--muted)}
+.status:not(:empty){padding-block:2px 10px}
+.status.err{color:var(--err);font-weight:700}
+
+/* reader */
+.read-wrap{max-width:1180px;margin:0 auto;padding:4px 24px 0;display:grid;grid-template-columns:minmax(0,1fr);gap:40px}
+.toc-col{display:none}
+@media (min-width:1180px){
+  .read-wrap{grid-template-columns:230px minmax(0,1fr)}
+  .toc-col{display:block;position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px);align-self:start;max-height:calc(100vh - 230px);overflow:auto;padding-bottom:12px}
+}
+.sheet{background:var(--sheet);border-radius:22px;box-shadow:var(--shadow);padding:clamp(28px,5vw,64px) clamp(20px,6vw,80px) clamp(40px,6vw,72px);font-size:var(--fs);margin-bottom:calc(170px + env(safe-area-inset-bottom,0px));min-width:0}
+#docHead,#docBody{max-width:34em;margin:0 auto}
+.eyebrow{font-size:15px;color:var(--muted);margin:0 0 14px;font-weight:700}
+.eyebrow.sample{display:inline-block;background:var(--accent-soft);color:var(--ink);padding:5px 12px;border-radius:999px}
+.doc-title{font-family:var(--display);font-weight:600;font-size:1.5em;line-height:1.2;letter-spacing:-.01em;margin:0 0 .7em;text-wrap:balance}
+.skipping{font-size:16px;color:var(--muted);border-block:1px solid var(--line);padding:10px 0}
+.skipping summary{cursor:pointer;font-weight:700;padding:4px 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:8px 0 4px}
+.chip{background:var(--chip);border-radius:999px;padding:4px 12px;color:var(--ink);font-variant-numeric:tabular-nums}
+.sec{margin-top:1.8em}
+.sec-title{font-family:var(--display);font-weight:600;font-size:1.15em;line-height:1.3;margin:0 0 .55em;text-wrap:balance}
+.sec p{margin:0 0 1em;line-height:1.72}
+.s{cursor:pointer;border-radius:5px;padding:.05em .12em;margin:0 -.12em;-webkit-box-decoration-break:clone;box-decoration-break:clone;transition:background-color .2s}
+.s:hover{background:var(--chip)}
+.s.hl{background:var(--hl);box-shadow:inset 0 -2px 0 var(--hl-line)}
+.s.on{background:var(--mark);color:var(--mark-ink)}
+.s.on.hl{box-shadow:inset 0 -3px 0 var(--hl-line)}
+.note-btn{display:inline-grid;place-items:center;vertical-align:-.12em;width:1.3em;height:1.3em;margin:0 .1em 0 .2em;border:0;border-radius:.35em;background:var(--accent-soft);color:var(--accent);cursor:pointer;padding:0}
+.note-btn .i{width:.8em;height:.8em}
+.skip-card{border:2px dashed var(--line);border-radius:14px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;font-size:17px;color:var(--muted);margin-bottom:.8em}
+.sec[data-skip="1"] .sec-title{color:var(--muted)}
+.note{font-size:17px;color:var(--muted);margin:0 0 .8em}
+.caps-off .sec-body{opacity:.55}
+.vis{margin:0 0 1.1em;display:grid;justify-items:center;gap:8px}
+.vis img{max-width:100%;height:auto;cursor:zoom-in;border-radius:6px}
+.vis-eq img,.vis-table img{filter:var(--pic-filter);mix-blend-mode:var(--pic-blend)}
+.vis-figure img{background:#fff;padding:8px;border-radius:10px}
+.vis figcaption{font-size:.7em;line-height:1.45;color:var(--muted);justify-self:stretch}
+.vis code{font-family:ui-monospace,Consolas,monospace;font-size:.7em;color:var(--muted);overflow-wrap:anywhere;background:var(--chip);padding:6px 10px;border-radius:8px;justify-self:stretch}
+.zoom{position:fixed;inset:0;z-index:45;background:var(--sheet);display:grid;grid-template-rows:auto 1fr}
+.zoom-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;border-bottom:1px solid var(--line)}
+.zoom-bar span{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zoom-scroll{overflow:auto;padding:24px 16px;display:grid;place-items:start center}
+.zoom-scroll img{width:100%;height:auto}
+.zoom.vis-eq img,.zoom.vis-table img{filter:var(--pic-filter)}
+.zoom.vis-figure .zoom-scroll{background:#fff}
+.eq{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 1em}
+.eq .s{font-size:16px;font-weight:700;background:var(--chip);padding:4px 12px;margin:0;border-radius:999px}
+.eq .s.on{background:var(--mark)}
+.eq code{font-family:ui-monospace,Consolas,monospace;font-size:17px;color:var(--muted);overflow-wrap:anywhere}
+
+/* contents */
+.toc-label{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:8px 12px}
+.toc-list{display:grid;gap:2px}
+.toc-list button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:10px;font-size:16px;line-height:1.3;color:var(--muted)}
+.toc-list button:hover{background:var(--chip);color:var(--ink)}
+.toc-list button:focus-visible{outline:3px solid var(--accent)}
+.toc-list button[aria-current="true"]{background:var(--accent-soft);color:var(--ink);font-weight:700}
+.toc-list .tag{font-size:13px;white-space:nowrap;align-self:center}
+
+/* player */
+.player{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:0 16px calc(14px + env(safe-area-inset-bottom,0px));pointer-events:none}
+.player-in{pointer-events:auto;max-width:880px;margin:0 auto;background:var(--sheet);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:10px 14px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"trans where tools";gap:8px 16px;align-items:center}
+.transport{grid-area:trans;display:flex;align-items:center;gap:2px}
+.ic{width:48px;height:48px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center;cursor:pointer;padding:0}
+.ic:hover{background:var(--chip)}
+.ic svg{width:24px;height:24px;fill:currentColor}
+.ic.play{width:64px;height:64px;background:var(--accent);color:var(--accent-ink)}
+.ic.play svg{width:30px;height:30px}
+.where{grid-area:where;display:grid;gap:4px;min-width:0}
+.where-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 12px;font-size:15px;min-width:0}
+#whereSec{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#whereLeft{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent);height:26px;margin:0}
+.tools{grid-area:tools;display:flex;gap:2px}
+.tool{min-width:62px;min-height:58px;border:0;background:transparent;border-radius:14px;display:grid;justify-items:center;align-content:center;gap:3px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;padding:4px 6px}
+.tool .i{color:var(--ink)}
+.tool:hover{background:var(--chip)}
+.tool[aria-pressed="true"]{background:var(--hl);color:var(--ink)}
+.tool[aria-expanded="true"]{background:var(--chip);color:var(--ink)}
+@media (max-width:720px){
+  .player{padding-inline:8px}
+  .player-in{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"where where" "trans tools";border-radius:20px;padding:10px}
+  .tools{justify-content:flex-end}
+  .sheet{margin-bottom:calc(240px + env(safe-area-inset-bottom,0px))}
+}
+
+/* settings panel */
+.panel{position:fixed;z-index:22;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 112px);width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 180px);overflow:auto;background:var(--sheet);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:20px;display:grid;gap:18px}
+@media (max-width:720px){.panel{bottom:calc(env(safe-area-inset-bottom,0px) + 176px)}}
+.panel h2{font-family:var(--display);font-weight:600;font-size:22px;margin:0}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.field{display:grid;gap:6px;font-size:15px;color:var(--muted)}
+.field label,.field .lab{font-weight:700}
+.field output{color:var(--ink);font-variant-numeric:tabular-nums}
+#voice{height:46px;border-radius:12px;border:1.5px solid var(--line);background:var(--sheet);padding:0 10px;font-size:15px;width:100%}
+.opts{display:grid;gap:10px}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:16px;cursor:pointer}
+.check input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--accent);flex:none}
+.fine{font-size:15px;color:var(--muted);margin:0;line-height:1.45}
+kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bottom-width:3px;border-radius:6px;padding:0 6px;background:var(--sheet);color:var(--ink)}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:15px;color:var(--muted);align-items:center}
+
+/* drawers, popover, dialog */
+.scrim{position:fixed;inset:0;z-index:25;background:var(--scrim)}
+.drawer{position:fixed;top:0;bottom:0;z-index:30;width:min(430px,calc(100vw - 24px));background:var(--sheet);box-shadow:var(--shadow);padding:calc(env(safe-area-inset-top,0px) + 16px) 20px calc(env(safe-area-inset-bottom,0px) + 20px);overflow:auto;display:flex;flex-direction:column;gap:14px}
+.drawer.left{left:0;border-radius:0 22px 22px 0}
+.drawer.right{right:0;border-radius:22px 0 0 22px}
+.drawer-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.drawer-head h2{font-family:var(--display);font-weight:600;font-size:24px;margin:0}
+.nlist{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.nitem{border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:8px}
+.nsec{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.nquote{margin:0;font-size:17px;line-height:1.5}
+.nquote.is-hl span{background:var(--hl);box-shadow:inset 0 -2px 0 var(--hl-line);-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 .1em}
+.ntext{margin:0;font-size:17px;line-height:1.5;padding-left:12px;border-left:3px solid var(--accent);white-space:pre-wrap}
+.pop{position:fixed;z-index:28;background:var(--sheet);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:6px;display:grid;gap:2px;width:250px}
+.pop button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;font-size:18px;font-weight:700}
+.pop button:hover,.pop button:focus-visible{background:var(--chip)}
+.pop button:focus-visible{outline:3px solid var(--accent)}
+.pop button[disabled]{opacity:.45;cursor:default}
+.modal-back{position:fixed;inset:0;z-index:40;background:var(--scrim);display:grid;place-items:center;padding:16px}
+.modal{width:min(620px,100%);background:var(--sheet);border-radius:22px;box-shadow:var(--shadow);padding:24px;display:grid;gap:14px;max-height:calc(100vh - 32px);overflow:auto}
+.modal h2{font-family:var(--display);font-weight:600;font-size:24px;margin:0}
+.modal blockquote{margin:0;padding:12px 16px;background:var(--chip);border-radius:12px;font-size:18px;line-height:1.5}
+.modal textarea{min-height:180px;padding:14px;border-radius:14px;border:2px solid var(--line);background:var(--bg);font-size:20px;line-height:1.5;resize:vertical;width:100%}
+
+/* library */
+.library{max-width:780px;margin:0 auto;padding:8px 24px 80px;display:grid;gap:22px}
+.lib-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap}
+.lib-title{font-family:var(--display);font-weight:600;font-size:34px;line-height:1.15;margin:8px 0 0}
+.open-card{background:var(--sheet);border:2px dashed var(--line);border-radius:22px;padding:26px;display:grid;gap:14px}
+.open-card p{margin:0;font-size:18px}
+.paste{display:grid;gap:10px}
+.paste label{font-weight:700}
+.paste textarea{width:100%;min-height:180px;padding:14px;border-radius:12px;border:2px solid var(--line);background:var(--bg);font-size:18px;line-height:1.5}
+.lib-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.lib-item{background:var(--sheet);border-radius:18px;box-shadow:var(--shadow);padding:6px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px}
+.lib-open{all:unset;box-sizing:border-box;cursor:pointer;padding:14px 16px;border-radius:14px;display:grid;gap:6px;min-width:0}
+.lib-open:hover{background:var(--chip)}
+.lib-open:focus-visible{outline:3px solid var(--accent)}
+.lib-name{font-family:var(--display);font-weight:600;font-size:21px;line-height:1.25}
+.lib-meta{font-size:16px;color:var(--muted)}
+.lib-prog{height:6px;border-radius:99px;background:var(--chip);overflow:hidden;max-width:320px}
+.lib-prog i{display:block;height:100%;background:var(--accent)}
+.lib-confirm{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:4px 16px 12px;font-size:17px}
+
+.backup{border-top:1px solid var(--line);padding-top:22px;display:grid;gap:12px}
+.backup h2{font-family:var(--display);font-weight:600;font-size:24px;margin:0}
+.drop{position:fixed;inset:0;z-index:50;background:var(--scrim);display:grid;place-items:center;padding:24px}
+.drop div{border:4px dashed var(--accent);border-radius:24px;padding:48px 40px;font-size:28px;font-weight:700;text-align:center;background:var(--sheet)}
+
+@media (max-width:560px){
+  .bar-in,.status,.read-wrap,.library{padding-inline:16px}
+  .sheet{border-radius:18px}
+  .bar{position:static}
+  .bar-in{padding-block:6px}
+  .brand{display:none}
+  .nav{width:100%;justify-content:space-between;flex-wrap:nowrap}
+  .hbtn{padding:0 8px;font-size:15px;gap:6px}
+  .hbtn .i{display:none}
+  #whereLeft{font-size:14px}
+  .tool{min-width:54px}
+  .ic{width:44px;height:44px}.ic.play{width:58px;height:58px}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-in">
+    <div class="brand">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="4" y="3" width="22" height="30" rx="4" fill="var(--sheet)" stroke="var(--ink)" stroke-width="2.5"/><path d="M9 11h12M9 16h12M9 21h8" stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round"/><path d="M30 15c2 2.8 2 7.2 0 10M34 11c4 5 4 13 0 18" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/></svg>
+      <span>Paper Out Loud</span>
+    </div>
+    <nav class="nav" aria-label="Main">
+      <button class="hbtn" id="contentsBtn" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>Contents</button>
+      <button class="hbtn" id="notesBtn" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/></svg>Notes <span class="count" id="notesCount" hidden></span></button>
+      <button class="hbtn" id="libraryBtn"><svg class="i" viewBox="0 0 24 24"><path d="M5 4v16M10 4v16M14.5 5l4.5 15"/></svg>Library</button>
+      <button class="hbtn" id="openTop"><svg class="i" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>Open</button>
+    </nav>
+  </div>
+</header>
+<div id="status" class="status" role="status" aria-live="polite"></div>
+
+<main id="readerView">
+  <div class="read-wrap">
+    <nav class="toc-col" aria-label="Contents">
+      <p class="toc-label">Contents</p>
+      <div class="toc-list"></div>
+    </nav>
+    <article class="sheet" id="sheet">
+      <div id="docHead"></div>
+      <div id="docBody"></div>
+    </article>
+  </div>
+</main>
+
+<section id="libraryView" class="library" hidden aria-labelledby="libTitle">
+  <div class="lib-head">
+    <h1 class="lib-title" id="libTitle">Your papers</h1>
+    <button class="btn quiet" id="backToReading" hidden>Back to reading</button>
+  </div>
+  <div class="open-card">
+    <p>Open a PDF, or drag one onto this page. It will be saved here so you can come back to it.</p>
+    <div class="row">
+      <button class="btn primary big" id="openBtn"><svg class="i" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>Open a paper</button>
+      <button class="btn" id="pasteBtn">Paste text instead</button>
+    </div>
+    <div id="pastePanel" class="paste" hidden>
+      <label for="pasteArea">Paste the paper's text</label>
+      <textarea id="pasteArea" placeholder="Copy the text from a web page or document and paste it here."></textarea>
+      <div class="row"><button class="btn primary" id="pasteGo">Read this text</button><button class="btn quiet" id="pasteCancel">Cancel</button></div>
+    </div>
+  </div>
+  <p class="fine" id="libEmpty" hidden>No saved papers yet.</p>
+  <ul class="lib-list" id="libList"></ul>
+  <section class="backup" aria-labelledby="bkHead">
+    <h2 id="bkHead">Backup</h2>
+    <p class="fine">Your papers, places, highlights, notes and settings are saved in this browser on this device. Clearing browsing data erases them. Save a backup now and then, and keep the file somewhere safe like OneDrive. You can restore it here, or on another device.</p>
+    <p class="fine" id="bkInfo"></p>
+    <div class="row"><button class="btn" id="backupBtn">Save a backup</button><button class="btn quiet" id="restoreBtn">Restore from a backup</button></div>
+    <input type="file" id="restoreInput" accept=".json,application/json" hidden>
+  </section>
+</section>
+<input type="file" id="fileInput" accept="application/pdf,.pdf,.txt,text/plain" hidden>
+
+<div class="player" role="region" aria-label="Playback">
+  <div class="player-in">
+    <div class="transport">
+      <button class="ic" id="prevS" aria-label="Previous sentence" title="Previous sentence (←)"><svg viewBox="0 0 24 24"><path d="M17 6l-9 6 9 6z"/></svg></button>
+      <button class="ic play" id="playBtn" aria-label="Play" title="Play or pause (Space)"><svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
+      <button class="ic" id="nextS" aria-label="Next sentence" title="Next sentence (→)"><svg viewBox="0 0 24 24"><path d="M7 6l9 6-9 6z"/></svg></button>
+    </div>
+    <div class="where">
+      <div class="where-top"><span id="whereSec">—</span><span id="whereLeft"></span></div>
+      <input type="range" id="seek" min="0" max="0" value="0" step="1" aria-label="Position in the paper">
+    </div>
+    <div class="tools">
+      <button class="tool" id="hlBtn" aria-pressed="false" title="Highlight this sentence (H)"><svg class="i" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5L10 19H5v-5z"/><path d="M4 22h16"/></svg>Highlight</button>
+      <button class="tool" id="noteBtn" title="Add a note to this sentence (N)"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/><path d="M8.5 9h7"/></svg>Note</button>
+      <button class="tool" id="setBtn" aria-expanded="false" aria-controls="settings"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Settings</button>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="settings" role="dialog" aria-label="Listening settings" hidden>
+  <h2>Listening settings</h2>
+  <div class="fields">
+    <div class="field"><label for="rate">Speed <output id="rateOut">1.0×</output></label><input type="range" id="rate" min="0.6" max="2.4" step="0.1" value="1"></div>
+    <div class="field"><label for="voice">Voice</label><select id="voice"></select><button class="btn sm" id="voiceTest" type="button">Test this voice</button></div>
+    <div class="field"><span class="lab" id="sizeLab">Text size <output id="sizeOut"></output></span><div class="row" role="group" aria-labelledby="sizeLab"><button class="btn sm" id="smaller" aria-label="Smaller text">A−</button><button class="btn sm" id="bigger" aria-label="Larger text">A+</button></div></div>
+  </div>
+  <p class="fine" id="voiceHint" hidden></p>
+  <div class="opts">
+    <label class="check"><input type="checkbox" id="optTitles" checked>Read section titles</label>
+    <label class="check"><input type="checkbox" id="optCaps" checked>Read figure and table captions at the end</label>
+    <label class="check"><input type="checkbox" id="optScroll" checked>Keep the current sentence in view</label>
+  </div>
+  <div class="keys">
+    <span><kbd>Space</kbd></span><span>Play or pause</span>
+    <span><kbd>←</kbd> <kbd>→</kbd></span><span>Previous or next sentence</span>
+    <span><kbd>[</kbd> <kbd>]</kbd></span><span>Previous or next section</span>
+    <span><kbd>H</kbd> <kbd>N</kbd></span><span>Highlight, or add a note to, the sentence being read</span>
+  </div>
+  <p class="fine">Equations, tables and figures stay in the text as pictures but aren’t read aloud. Click one to enlarge it.</p>
+  <div hidden>
+  </div>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer left" id="contentsDrawer" aria-labelledby="contentsHead" hidden>
+  <div class="drawer-head"><h2 id="contentsHead">Contents</h2><button class="btn quiet sm drawer-close" aria-label="Close contents"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="toc-list"></div>
+</aside>
+<aside class="drawer right" id="notesDrawer" aria-labelledby="notesHead" hidden>
+  <div class="drawer-head"><h2 id="notesHead">Highlights and notes</h2><button class="btn quiet sm drawer-close" aria-label="Close notes"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <p class="fine" id="notesEmpty">Nothing yet. Click any sentence to highlight it or add a note, or press H while listening to highlight the sentence being read.</p>
+  <ol class="nlist" id="notesList"></ol>
+  <div class="row" id="notesActions" hidden><button class="btn" id="exportBtn">Save as a file</button><button class="btn quiet" id="copyBtn">Copy all</button></div>
+</aside>
+
+<div class="pop" id="pop" role="menu" aria-label="Sentence options" hidden>
+  <button role="menuitem" id="popPlay"><svg class="i" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>Read from here</span></button>
+  <button role="menuitem" id="popHl"><svg class="i" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5L10 19H5v-5z"/><path d="M4 22h16"/></svg><span>Highlight</span></button>
+  <button role="menuitem" id="popNote"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/><path d="M8.5 9h7"/></svg><span>Add note</span></button>
+</div>
+
+<div class="modal-back" id="noteDialog" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="noteHead">
+    <h2 id="noteHead">Note</h2>
+    <blockquote id="noteQuote"></blockquote>
+    <label for="noteText" class="fine">Your note is saved as you type. On a Surface, press the Windows key and H to dictate instead of typing.</label>
+    <textarea id="noteText"></textarea>
+    <div class="row"><button class="btn primary" id="noteDone">Done</button><button class="btn quiet" id="noteDelete">Delete note</button></div>
+  </div>
+</div>
+
+<div class="zoom" id="zoom" role="dialog" aria-modal="true" aria-labelledby="zoomTitle" hidden>
+  <div class="zoom-bar"><span id="zoomTitle">Picture</span><div class="row"><button class="btn sm" id="zoomBigger" aria-label="Zoom in">Zoom in</button><button class="btn primary sm" id="zoomClose">Close</button></div></div>
+  <div class="zoom-scroll"><img id="zoomImg" alt=""></div>
+</div>
+<div class="drop" id="drop" hidden><div>Drop the PDF to open it</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+
+/* ---------- patterns ---------- */
+const HEAD_WORDS='abstract|summary|introduction|background|related work|literature review|methods?|methodology|materials and methods|methods and materials|experimental setup|experimental design|experiments?|study design|results|findings|results and discussion|discussion|general discussion|conclusions?|concluding remarks|limitations|future work|implications|acknowledge?ments?|funding|author contributions|competing interests|conflicts? of interest|declaration of (?:competing )?interests?|data availability(?: statement)?|ethics statement|references(?: and notes)?|bibliography|works cited|literature cited|appendix(?:\\s+[a-z0-9]+)?(?:[.:]\\s*.{0,90})?|appendices|supplementary (?:material|materials|information)';
+const HEAD_RE=new RegExp('^(?:(?:\\d+(?:\\.\\d+){0,3}|[IVX]+|[A-H])\\.?\\s+)?(?:'+HEAD_WORDS+')\\s*:?$','i');
+const REF_RE=/^(?:(?:\d+|[IVX]+)\.?\s+)?(?:references(?: and notes)?|bibliography|works cited|literature cited|cited literature)\s*:?$/i;
+const ADMIN_RE=/^(?:(?:\d+|[IVX]+)\.?\s+)?(?:acknowledge?ments?|funding(?: information)?|author contributions|competing interests|conflicts? of interest|declaration of (?:competing )?interests?|data availability(?: statement)?|ethics statement|financial disclosure)\s*:?$/i;
+const NUMHEAD_RE=/^(?:\d+(?:\.\d+){0,3}|[IVX]+|[A-H](?:\.\d+){1,3})\.?\s+[A-Z][A-Za-z0-9\-–:,'’&() ]{1,70}$/;
+const CAPTION_RE=/^(?:supplementary\s+)?(?:fig(?:ure)?s?\.?|table|tab\.|box)\s*S?\d+[A-Za-z]?\s*[.:|—–-]/i;
+
+function newStats(){return {cite:0,fig:0,links:0,eq:0,labels:0,headers:0,front:0,caps:0}}
+
+function looksEquation(t){
+  if(t.length>220) return false;
+  if(/[=≤≥≈]/.test(t) && /\(\s*[A-Z]?\d{1,3}[a-z]?\s*\)\s*$/.test(t)) return true;
+  const math=(t.match(/[=+−×·∑∏∫√≤≥≈∝∈∂∇^_{}|<>]/g)||[]).length;
+  const greek=(t.match(/[α-ωΑ-Ω]/g)||[]).length;
+  const words=(t.match(/[A-Za-z]{4,}/g)||[]).length;
+  return (math+greek)/Math.max(t.length,1)>0.12 && words<3;
+}
+const KEEP_HYPHEN=/(?:^|[^A-Za-z])(first|second|third|two|three|four|well|high|low|long|short|self|state|data|model|time|real|large|small|closed|least|worst|best|cross|top|full|half|double|single|zero|case|task|sample|deep|fine|world|level)-$/i;
+function looksTable(t){
+  const tok=t.split(/\s+/);
+  const nums=tok.filter(x=>/^[(\[]?[-−+]?\d[\d.,]*%?[)\],;]?$/.test(x)||x==='±').length;
+  if(tok.length>=8 && nums/tok.length>0.35) return true;
+  if(t.length<500 && (t.match(/et al/g)||[]).length>=3 && !/[.!?](\s|$)/.test(t.replace(/et al\./g,'et al'))) return true;
+  return false;
+}
+function joinLines(a,b){
+  if(/[A-Za-z]-$/.test(a) && /^[a-z]/.test(b)) return KEEP_HYPHEN.test(a)?a+b:a.slice(0,-1)+b;
+  return a+' '+b;
+}
+
+/* ---------- cleaning text for listening ---------- */
+const REPL=[
+  [/χ\s?[²2]/g,'chi-squared'],[/η\s?[²2]/g,'eta squared'],[/R\s?²/g,'R squared'],
+  [/\be\.g\.,?\s*/gi,'for example, '],[/\bi\.e\.,?\s*/gi,'that is, '],[/\bcf\.\s*/gi,'compare '],
+  [/\bvs?\.\s/g,'versus '],[/\bapprox\.\s*/gi,'approximately '],[/\bresp\.\s*/gi,'respectively '],
+  [/\bFigs?\.\s*/g,'Figure '],[/\bEqs?\.\s*/g,'Equation '],[/\bSect?\.\s*/g,'Section '],[/\bRefs?\.\s*/g,'Reference '],
+  [/\bNo\.\s*(?=\d)/g,'number '],
+  [/(\d)\s*[–—]\s*(\d)/g,'$1 to $2'],
+  [/\s*±\s*/g,' plus or minus '],[/\s*≈\s*/g,' approximately '],[/\s*≤\s*/g,' less than or equal to '],
+  [/\s*≥\s*/g,' greater than or equal to '],[/\s*≠\s*/g,' not equal to '],
+  [/\s+<\s+|\s*<\s*(?=[\d.])/g,' less than '],[/\s+>\s+|\s*>\s*(?=[\d.])/g,' greater than '],
+  [/\s*=\s*/g,' equals '],[/(\d)\s*×\s*(\d)/g,'$1 by $2'],[/\s*×\s*/g,' times '],[/~\s*(?=\d)/g,'about '],
+  [/(\d)\s?°C\b/g,'$1 degrees Celsius'],[/(\d)\s?kHz\b/g,'$1 kilohertz'],[/(\d)\s?Hz\b/g,'$1 hertz'],
+  [/(\d)\s?ms\b/g,'$1 milliseconds'],[/(\d)\s?[µμ]V\b/g,'$1 microvolts'],[/(\d)\s?mg\b/g,'$1 milligrams'],
+  [/(\d)\s?m[lL]\b/g,'$1 milliliters'],[/(\d)\s?[µμ]m\b/g,'$1 micrometers'],
+  [/[ǫεϵ]/g,'epsilon'],[/β/g,'beta'],[/α/g,'alpha'],[/γ/g,'gamma'],[/δ/g,'delta'],[/Δ/g,'change in '],[/θ/g,'theta'],[/λ/g,'lambda'],
+  [/σ/g,'sigma'],[/[µμ]/g,'micro'],[/χ/g,'chi'],[/η/g,'eta'],[/ρ/g,'rho'],[/τ/g,'tau'],[/ω/g,'omega'],[/π/g,'pi'],
+  [/(\S)ˆ/g,'$1 hat '],[/ˆ/g,''],[/(\S)˜/g,'$1 tilde '],[/˜/g,''],[/∗/g,' star'],[/′/g,' prime'],
+  [/\s*∈\s*/g,' in '],[/\s*∉\s*/g,' not in '],[/\s*∋\s*/g,' containing '],[/\s*[⊂⊆]\s*/g,' a subset of '],
+  [/\s*↦\s*/g,' maps to '],[/\s*→\s*/g,' to '],[/∞/g,'infinity'],[/∀\s*/g,'for all '],[/∃\s*/g,'there exists '],
+  [/∑\s*/g,'sum of '],[/∏\s*/g,'product of '],[/[∫‖]/g,''],[/∇\s*/g,'gradient of '],[/∂/g,'partial '],[/√\s*/g,'square root of '],
+  [/\s*∼\s*/g,' distributed as '],[/\s*−\s*/g,' minus '],[/\s+·\s+/g,' times '],[/[∆]/g,'Delta '],
+  [/[†‡§¶*]+/g,''],[/\s*\|\s*/g,' given ']
+];
+function cleanText(t,st){
+  t=t.replace(/χ\s?²/g,'chi-squared').replace(/η\s?²/g,'eta squared');
+  t=t.replace(/[¹²³⁰-₟]+/g,()=>{st.cite++;return ''});
+  t=t.normalize('NFKC').replace(/[­​]/g,'');
+  // links, DOIs, emails
+  t=t.replace(/\b(at|from|via|see|on)\s+(?:https?:\/\/|www\.)[^\s)]*[^\s).,;:]/gi,(m,w)=>{st.links++;return w+' the link given in the paper'});
+  t=t.replace(/\s*\(?\b(?:https?:\/\/|www\.)[^\s)]*[^\s).,;:]\)?/gi,()=>{st.links++;return ''});
+  t=t.replace(/\s*\(?\b(?:doi:\s*)?10\.\d{4,9}\/[^\s)]*[^\s).,;:]\)?/gi,()=>{st.links++;return ''});
+  t=t.replace(/\s*\(?[\w.+-]+@[\w-]+\.[\w.-]+\w\)?/g,()=>{st.links++;return ''});
+  // numbered citations like [3] or [1–4, 7]
+  t=t.replace(/\s*\[\s*\d+[a-z]?(?:\s*[-–—,;]\s*\d+[a-z]?)*\s*\]/g,()=>{st.cite++;return ''});
+  // "; Fig. 2A" inside parentheses
+  t=t.replace(/[;,]\s*(?:see\s+)?(?:Figs?\.|Figures?|Tables?|Tab\.|Eqs?\.|Equations?|Supplementary\s+\w+)\s*S?\d+[A-Za-z]?(?:\s*(?:[-–,]|and)\s*S?\d*[A-Za-z]?)*(?=\s*\))/gi,()=>{st.fig++;return ''});
+  // parentheticals: figure pointers and author-year citations
+  t=t.replace(/\s*\(([^()]{1,300})\)/g,(m,c)=>{
+    const s=c.trim();
+    if(/^(?:see\s+|e\.g\.,?\s+|cf\.,?\s+|compare\s+)?(?:Figs?\.|Figures?|Tables?|Tab\.|Eqs?\.|Equations?|Supplementary|Supp\.|SI\b|Appendix|Box\s+\d)/i.test(s)){st.fig++;return ''}
+    if(/\b(?:1[89]|20)\d{2}[a-z]?\b/.test(s) && /^(?:see\s+|e\.g\.,?\s+|cf\.,?\s+|for (?:a )?reviews?,?\s+|reviewed in\s+)?\p{Lu}[\p{L}'’\-]+/u.test(s) && !/[=<>≤≥±%]/.test(s)){st.cite++;return ''}
+    return m;
+  });
+  // narrative citations: "Smith et al. (2019) showed"
+  t=t.replace(/\bet al\.?,?\s*\((?:1[89]|20)\d{2}[a-z]?\)/g,()=>{st.cite++;return 'and colleagues'});
+  t=t.replace(/(\p{Lu}[\p{L}'’\-]+(?:\s+(?:and|&)\s+\p{Lu}[\p{L}'’\-]+)?)\s*\((?:1[89]|20)\d{2}[a-z]?\)/gu,(m,n)=>{st.cite++;return n});
+  t=t.replace(/\bet al\.(\s+)(?=\p{Lu})/gu,'and colleagues.$1');
+  t=t.replace(/\bet al\.?(?=[\s,;:)]|$)/g,'and colleagues');
+  for(const [re,rep] of REPL) t=t.replace(re,rep);
+  // footnote-style citation numbers stuck to punctuation: "memory.12,13 However"
+  t=t.replace(/([a-z)])([.,;:])(\d{1,3}(?:[,–-]\d{1,3})*)(?=\s|$)/g,(m,a,b)=>{st.cite++;return a+b});
+  // tidy
+  t=t.replace(/\(\s*[,;]?\s*\)/g,'').replace(/\s+([,.;:!?)])/g,'$1').replace(/\(\s+/g,'(')
+     .replace(/([,;:])(?=[.!?])/g,'').replace(/,\s*,/g,',').replace(/\s{2,}/g,' ').trim();
+  return t;
+}
+const ABBR=/^(?:Dr|Mr|Mrs|Ms|Prof|Fig|Figs|Eq|Eqs|No|vs|al|approx|ca|Inc|Ltd|St|Vol|pp|Ref|Sec|[A-Z])$/;
+function splitSentences(t){
+  const out=[];let start=0;const re=/[.!?]["”’)]*\s+(?=["“(]?[A-Z0-9])/g;let m;
+  while((m=re.exec(t))){
+    const before=t.slice(start,m.index+1);const w=before.match(/(\S+)\.$/);
+    if(w && ABBR.test(w[1].replace(/^[(“"]/,''))) continue;
+    if(/\b(?:Figure|Table|Box|Equation)\s+S?\d+[A-Za-z]?\.$/.test(before)) continue;
+    out.push(t.slice(start,m.index+m[0].length).trim());start=m.index+m[0].length;
+  }
+  if(start<t.length) out.push(t.slice(start).trim());
+  const res=[];
+  for(const s of out){ if(s.length>380) res.push(...s.split(/(?<=;)\s+/)); else if(s) res.push(s); }
+  return res.filter(s=>/[A-Za-z0-9]/.test(s));
+}
+
+/* ---------- turning blocks into a document ---------- */
+function buildDoc(title,blocks,st){
+  const secs=[];const caps=[];
+  let cur={title:'Opening',speak:'Opening',paras:[],front:true,skip:''};
+  let seenHead=false;
+  const push=()=>{ if(cur.paras.length || !cur.front) secs.push(cur); };
+  for(const b of blocks){
+    const t=b.text.replace(/\s+/g,' ').trim();
+    if(!t) continue;
+    if(b.type==='heading'){
+      if(!seenHead && !HEAD_RE.test(t) && !NUMHEAD_RE.test(t)){ st.front++; continue; }
+      seenHead=true; push();
+      const afterRefs=secs.some(x=>x.skip==='refs')||cur.skip==='refs';
+      cur={title:t,speak:t.replace(/^(?:(?:\d+(?:\.\d+)*|[IVX]+|[A-H](?:\.\d+)+)\.?\s+)/,'').replace(/:$/,''),paras:[],skip:REF_RE.test(t)?'refs':ADMIN_RE.test(t)?'admin':(afterRefs||/^appendi/i.test(t))?'appendix':''};
+      continue;
+    }
+    if(b.drop){ st.labels++; continue; }
+    if(cur.skip==='refs'||cur.skip==='appendix'){ if(b.type==='eq'){const last=cur.paras[cur.paras.length-1];if(last&&last.type==='eq'){last.raw+='  '+t;continue}} cur.paras.push({type:b.type==='eq'?'eq':'p',raw:t}); continue; }
+    if(b.type==='eq'){ const last=cur.paras[cur.paras.length-1]; if(last&&last.type==='eq'&&!b.region&&!last.region){last.raw+='  '+t;continue} st.eq++; cur.paras.push({type:'eq',raw:t,region:b.region}); continue; }
+    if(CAPTION_RE.test(t)){ st.caps++; caps.push(t); if(b.region){ st.figs=(st.figs||0)+1; cur.paras.push({type:'figure',kind:b.kind,raw:t,region:b.region}); } continue; }
+    if(looksTable(t)){ st.tables=(st.tables||0)+1; cur.paras.push({type:'table',raw:t,region:b.region}); continue; }
+    if(!seenHead && (t.length<200 || (t.length<500 && /@|\b(?:University|Institute|Department|College|Laborator|School of|Inc\.)/.test(t)))){ st.front++; continue; }
+    if(t.length<40 && t.split(' ').length<6 && !/[.!?:]$/.test(t)){ st.labels++; continue; }
+    cur.paras.push({type:'p',raw:t});
+  }
+  push();
+  if(caps.length) secs.push({title:'Figure and table captions',speak:'Figure and table captions',caps:true,skip:'',paras:caps.map(raw=>({type:'p',raw}))});
+  const scratch=newStats();
+  for(const s of secs){
+    for(const p of s.paras){
+      if(p.type!=='p') continue;
+      p.sentences=splitSentences(cleanText(p.raw, s.skip ? scratch : st));
+    }
+  }
+  return {v:2,title:title||'Untitled paper',sections:secs,stats:st};
+}
+
+/* ---------- pasted or .txt text ---------- */
+function parsePlainText(str,fallbackTitle){
+  const st=newStats();
+  const chunks=str.replace(/\r\n?/g,'\n').split(/\n\s*\n/).map(c=>c.split('\n').map(s=>s.trim()).filter(Boolean)).filter(c=>c.length);
+  let title='';
+  if(chunks.length && chunks[0].length<=3 && chunks[0].join(' ').length<250 && !HEAD_RE.test(chunks[0][0])) title=chunks.shift().join(' ');
+  const isHead=l=>l.length<90 && /^[A-Z0-9]/.test(l) && !/[.,;]$/.test(l) && (HEAD_RE.test(l) || (NUMHEAD_RE.test(l) && l.split(' ').length<=8));
+  const blocks=[];
+  for(const c of chunks){
+    const body=c.filter(l=>!isHead(l));
+    const avg=body.reduce((a,s)=>a+s.length,0)/Math.max(body.length,1);
+    const perLine=avg>140 || body.length===1;
+    let cur=null;
+    const flush=()=>{ if(cur){blocks.push({type:'para',text:cur});cur=null;} };
+    for(const line of c){
+      if(isHead(line)){ flush(); blocks.push({type:'heading',text:line}); continue; }
+      if(looksEquation(line)){ flush(); blocks.push({type:'eq',text:line}); continue; }
+      if(/^(?:page\s*)?\d{1,4}$/i.test(line)){ st.headers++; continue; }
+      if(perLine){ flush(); blocks.push({type:'para',text:line}); continue; }
+      if(CAPTION_RE.test(line) || /^(?:\[\d+\]|\d{1,3}\.\s)/.test(line)){ flush(); cur=line; continue; }
+      cur=cur?joinLines(cur,line):line;
+    }
+    flush();
+  }
+  return buildDoc(title||fallbackTitle||'Pasted text',blocks,st);
+}
+
+/* ---------- PDF ---------- */
+// Some PDFs draw ligatures (fi, fl, ff, ffi) as glyphs with no text. Guess which one from the word.
+function guessLig(L,R){
+  const w=s=>(L+s+R).toLowerCase();
+  if(/(efficien|sufficien|coefficien|difficult|affin|traffic|offic|suffix)/.test(w('ffi'))) return 'ffi';
+  if(/(shuffl|baffl|muffl|affluen|scaffol)/.test(w('ffl'))) return 'ffl';
+  if(/(differ|effect|offer|suffer|affect|staff|diffus|buffer|stuff|cutoff|tradeoff|trade-off|^off|effort|afford|diffeo|^diff|cliff)/.test(w('ff'))) return 'ff';
+  if(/(flex|^flow|workflow|overflow|fluct|reflect|conflict|influen|inflat|deflat|afflu|^flat|^flag|^flaw|^fly|^flip|^floor|^float|^flu)/.test(w('fl'))) return 'fl';
+  return 'fi';
+}
+function fixLig(t){return t.replace(/([A-Za-z]*)\uFFFC([A-Za-z]*)/g,(m,L,R)=>L+guessLig(L,R)+R).replace(/\uFFFC/g,'')}
+
+async function extractPdf(data,onProgress){
+  const pdf=await pdfjsLib.getDocument({data,isEvalSupported:false}).promise;
+  const pages=[];let meta='';
+  try{const md=await pdf.getMetadata();meta=(md&&md.info&&md.info.Title)||''}catch(e){}
+  for(let p=1;p<=pdf.numPages;p++){
+    onProgress(p,pdf.numPages);
+    const page=await pdf.getPage(p);const vp=page.getViewport({scale:1});
+    const tc=await page.getTextContent();const items=[];
+    for(const it of tc.items){
+      if(!('str' in it)) continue;
+      const pua=(!it.str||/^[\uE000-\uF8FF]+$/.test(it.str)) && it.width>0 ? ((it.fontName||'')+':'+(it.str||'empty')) : null;
+      if(!pua && !it.str.trim()) continue;
+      const [a,b,c,d,e,f]=it.transform;
+      if(Math.abs(b)>0.01||Math.abs(c)>0.01) continue; // rotated text, e.g. arXiv stamps
+      items.push({str:it.str,pua,lig:false,x:e,y:f,w:it.width,size:Math.abs(d)||Math.abs(a)||10});
+    }
+    pages.push({w:vp.width,h:vp.height,items});
+    page.cleanup();
+  }
+  // Private-use glyphs: a code that is nearly always followed directly by lowercase letters is a ligature (fi, fl, ff...).
+  const stat={};
+  pages.forEach(pg=>pg.items.forEach((it,i)=>{
+    if(!it.pua) return;
+    const s=stat[it.pua]||(stat[it.pua]={n:0,w:0});s.n++;
+    const end=it.x+it.w;
+    if(pg.items.some(nx=>nx!==it && /^[a-z]/.test(nx.str) && Math.abs(nx.x-end)<1.5 && Math.abs(nx.y-it.y)<1)) s.w++;
+  }));
+  pages.forEach(pg=>{pg.items=pg.items.filter(it=>{
+    if(!it.pua) return true;
+    const s=stat[it.pua];
+    if(s.w>=1 && s.w/s.n>0.7){it.lig=true;it.str='\uFFFC';return true}
+    return false;
+  })});
+  return {pages,meta,pdf};
+}
+function pdfToDoc(pages,meta,fileName){
+  const st=newStats();
+  // decide the layout for the whole paper: a single-column paper can have table pages that look two-column
+  const twoCol=pages.map(pg=>{
+    const mid=pg.w/2;let L=0,R=0,X=0;
+    for(const it of pg.items){ if(it.lig||it.str.trim().length<3) continue; if(it.x+it.w<mid+4) L++; else if(it.x>mid-4) R++; else X++; }
+    return L>8 && R>8 && X<(L+R)*0.25;
+  });
+  const mostlyTwo=twoCol.filter(Boolean).length>pages.length/2;
+  pages.forEach((pg,pi)=>{
+    const mid=pg.w/2;
+    const two=mostlyTwo&&twoCol[pi];
+    const cols={};
+    for(const it of pg.items){
+      let c='F';
+      if(two){ if(it.x+it.w<=mid+6) c='L'; else if(it.x>=mid-6) c='R'; }
+      (cols[c]=cols[c]||[]).push(it);
+    }
+    const lines=[];
+    for(const c in cols){
+      const its=cols[c].sort((a,b)=>b.y-a.y||a.x-b.x);const groups=[];
+      for(const it of its){
+        const g=groups[groups.length-1];
+        if(g && Math.abs(g.y-it.y)<Math.max(g.size,it.size)*0.5){ g.items.push(it); if(it.size>g.size){g.size=it.size;g.y=it.y;} }
+        else groups.push({y:it.y,size:it.size,items:[it]});
+      }
+      for(const g of groups){
+        g.items.sort((a,b)=>a.x-b.x);
+        let text='',end=null,minX=Infinity,maxR=-Infinity;
+        for(const it of g.items){
+          const s=it.str.trim();
+          if(it.size<g.size*0.8 && it.y>g.y+g.size*0.12 && s.length<=12 && /^[\d,\s–\-*†‡§a-z]+$/.test(s) && /[\d*†‡§]/.test(s)){ st.cite++; continue; }
+          if(end!==null && !/\uFFFC$/.test(text) && it.x-end>it.size*0.15 && !/\s$/.test(text) && !/^\s/.test(it.str)) text+=' ';
+          text+=it.str;end=it.x+it.w;minX=Math.min(minX,it.x);maxR=Math.max(maxR,it.x+it.w);
+        }
+        text=text.replace(/\s+/g,' ').trim();
+        if(text) lines.push({text,y:g.y,size:g.size,x:minX,right:maxR,col:c,page:pi,h:pg.h});
+      }
+    }
+    const cr={};lines.forEach(l=>{cr[l.col]=Math.max(cr[l.col]||0,l.right)});lines.forEach(l=>l.colRight=cr[l.col]);
+    const by=(a,b)=>b.y-a.y||a.x-b.x;
+    if(two){
+      const colLines=lines.filter(l=>l.col!=='F');const top=colLines.length?Math.max(...colLines.map(l=>l.y)):Infinity;
+      pg.lines=[...lines.filter(l=>l.col==='F'&&l.y>top).sort(by),...lines.filter(l=>l.col==='L').sort(by),...lines.filter(l=>l.col==='R').sort(by),...lines.filter(l=>l.col==='F'&&l.y<=top).sort(by)];
+    } else pg.lines=lines.sort(by);
+  });
+  // running headers, footers, page and line numbers
+  const n=pages.length;const cnt=new Map();
+  const key=l=>l.text.toLowerCase().replace(/\d+/g,'#').replace(/\s+/g,' ').trim();
+  const edge=l=>l.y>l.h*0.9||l.y<l.h*0.1;
+  pages.forEach(pg=>{const seen=new Set();pg.lines.filter(edge).forEach(l=>{const k=key(l);if(!seen.has(k)){seen.add(k);cnt.set(k,(cnt.get(k)||0)+1)}})});
+  const thresh=Math.max(3,Math.ceil(n*0.2));
+  pages.forEach(pg=>{pg.lines=pg.lines.filter(l=>{
+    if(/^(?:page\s*)?\d{1,4}(?:\s*(?:of|\/)\s*\d{1,4})?$/i.test(l.text)){st.headers++;return false}
+    if(n>=3 && edge(l) && cnt.get(key(l))>=thresh){st.headers++;return false}
+    return true;
+  })});
+  const sizes=[];pages.forEach(pg=>pg.lines.forEach(l=>{for(let i=0;i<Math.min(l.text.length,300);i+=10) sizes.push(l.size)}));
+  sizes.sort((a,b)=>a-b);const body=sizes[Math.floor(sizes.length/2)]||10;
+  pages.forEach(pg=>{pg.lines=pg.lines.filter(l=>{
+    if(l.y<l.h*0.22 && l.size<body*0.87 && /[A-Za-z]{3}/.test(l.text) && (l.text.match(/\d/g)||[]).length<l.text.length*0.2 && !/[±=]/.test(l.text)){st.foot=(st.foot||0)+1;return false}
+    return true;
+  })});
+  const all=[].concat(...pages.map(p=>p.lines));
+  all.forEach(l=>{if(l.text.includes('\uFFFC'))l.text=fixLig(l.text)});
+  const totalChars=all.reduce((a,l)=>a+l.text.length,0);
+  if(totalChars<200) return null;
+
+  const looksHeading=l=>{
+    const t=l.text,words=t.split(' ').length;
+    if(t.length>150 || !/[A-Za-z]{2}/.test(t) || !/^[A-Z0-9]/.test(t) || CAPTION_RE.test(t)) return false;
+    if(HEAD_RE.test(t)) return true;
+    if(l.size>=body*1.15 && words<=20 && !/[,;]$/.test(t)) return true;
+    if(NUMHEAD_RE.test(t) && words<=9 && !/[.,;]$/.test(t) && l.right<l.colRight-(l.colRight-l.x)*0.25) return true;
+    return false;
+  };
+  const endsSentence=t=>/[.!?:]["”’)]?$/.test(t);
+  const blocks=[];let cur=null,prev=null;
+  const flush=()=>{if(cur){blocks.push(cur);cur=null}};
+  for(const ln of all){
+    const t=ln.text;
+    if(looksHeading(ln)){
+      if(cur && cur.type==='heading' && !HEAD_RE.test(cur.text) && prev && prev.page===ln.page && Math.abs(prev.size-ln.size)<0.6 && (prev.y-ln.y)<ln.size*2){ cur.text+=' '+t; cur.lines.push(ln); prev=ln; continue; }
+      flush(); cur={type:'heading',text:t,size:ln.size,page:ln.page,lines:[ln]}; prev=ln; continue;
+    }
+    if(looksEquation(t)){ flush(); const lb=blocks[blocks.length-1]; if(lb&&lb.type==='eq'&&lb.page===ln.page){lb.text+='  '+t;lb.lines.push(ln)} else blocks.push({type:'eq',text:t,page:ln.page,lines:[ln]}); prev=ln; continue; }
+    let np=!cur||cur.type!=='para';
+    if(!np){
+      if(prev.page===ln.page && prev.col===ln.col){
+        const gap=prev.y-ln.y;
+        if(gap>prev.size*1.75 || gap<0) np=true;
+        else if(endsSentence(prev.text) && (ln.x>prev.x+ln.size*0.8 || prev.right<prev.colRight-ln.size*2.5)) np=true;
+        if(Math.abs(ln.size-prev.size)>1.2) np=true;
+      } else if(endsSentence(prev.text) || !/^[a-z0-9(,;–-]/.test(t) || Math.abs(ln.size-prev.size)>1.2) np=true;
+    }
+    if(np){ flush(); cur={type:'para',text:t,page:ln.page,lines:[ln]}; }
+    else {cur.text=joinLines(cur.text,t);cur.lines.push(ln);}
+    prev=ln;
+  }
+  flush();
+  // re-attach text that a figure, algorithm box or footnote split away from its paragraph
+  for(let i=1;i<blocks.length;i++){
+    const b=blocks[i];
+    if(b.type!=='para' || b.text.length<60 || !/^[a-z]/.test(b.text) || blocks[i-1].type!=='para' || looksTable(b.text) || (b.text.match(/\b(?:the|of|and|to|we|is|that|in|for|with|by|as|are|this)\b/gi)||[]).length<3) continue; // text right after an equation belongs there
+    for(let j=i-1;j>=Math.max(0,i-15);j--){
+      const c=blocks[j];
+      if(c.type==='heading') break;
+      if(c.type!=='para') continue;
+      const unfinished=/[A-Za-z,]$/.test(c.text) && !looksTable(c.text) && !CAPTION_RE.test(c.text) && (c.text.match(/\b(?:the|of|and|to|we|is|that|in|for|with|by|as|are|this)\b/gi)||[]).length>=3;
+      const leadsIntoEq=blocks[j+1]&&blocks[j+1].type==='eq';
+      if(unfinished && !leadsIntoEq){ c.text=joinLines(c.text,b.text); c.lines.push(...b.lines); blocks.splice(i,1); i--; break; }
+    }
+  }
+  // picture regions: equations, tables and figures are cropped from the page and shown, not read
+  const isProse=l=>l.text.length>=35 && l.size>=body*0.85 && (l.text.match(/[A-Za-z]{3,}/g)||[]).length>=5 && (l.text.match(/\b(?:the|of|and|to|we|is|that|in|for|with|by|as|are|this)\b/gi)||[]).length>=2 && !looksEquation(l.text);
+  const bounds=(pg,col)=>{const ls=pg.lines.filter(l=>col==='F'||l.col===col);const xs=ls.length?ls:pg.lines;return [Math.min(...xs.map(l=>l.x))-4,Math.max(...xs.map(l=>l.right))+4]};
+  function regionFor(lines,mode){
+    const pi=lines[0].page,pg=pages[pi];if(lines.some(l=>l.page!==pi)) return null;
+    const col=lines.every(l=>l.col===lines[0].col)?lines[0].col:'F';
+    const set=new Set(lines),sameCol=l=>col==='F'||l.col===col||l.col==='F';
+    const top=Math.max(...lines.map(l=>l.y+l.size)),bot=Math.min(...lines.map(l=>l.y-l.size*0.4));
+    const others=pg.lines.filter(l=>!set.has(l)&&sameCol(l)&&(mode==='eq'?l.text.replace(/\s/g,'').length>=12:(isProse(l)||CAPTION_RE.test(l.text))));
+    const above=others.filter(l=>l.y-l.size*0.3>top-1).sort((a,b)=>a.y-b.y)[0];
+    const below=others.filter(l=>l.y+l.size*0.85<bot+1).sort((a,b)=>b.y-a.y)[0];
+    const pageTop=Math.max(...pg.lines.map(l=>l.y+l.size))+2,pageBot=Math.min(...pg.lines.map(l=>l.y-l.size*0.5))-2;
+    let T,B;
+    if(mode==='eq'){
+      T=above?Math.min(above.y-above.size*0.3,top+6*body):top+body*0.6;
+      B=below?Math.max(below.y+below.size*0.85,bot-6*body):bot-body*0.6;
+    } else if(mode==='up'){ // figure sits above its caption
+      T=above?above.y-above.size*0.3:pageTop;B=top;
+    } else { // table sits below its caption
+      T=bot;B=below?below.y+below.size*0.85:pageBot;
+    }
+    if(T-B<body*1.2) return null;
+    const [x0,x1]=bounds(pg,col);
+    return {page:pi,x0,x1,top:T,bot:B,col};
+  }
+  const floats=[];
+  for(const b of blocks){
+    if(b.type!=='para'||!CAPTION_RE.test(b.text)) continue;
+    const isTab=/^(?:supplementary\s+)?(?:table|tab\.)/i.test(b.text);
+    let reg=regionFor(b.lines,isTab?'down':'up');
+    if(!reg) reg=regionFor(b.lines,isTab?'up':'down');
+    if(reg){b.region=reg;b.kind=isTab?'table':'figure';floats.push({reg,caption:b})}
+  }
+  const inFloat=l=>floats.some(f=>f.reg.page===l.page&&!f.caption.lines.includes(l)&&l.y<=f.reg.top+1&&l.y>=f.reg.bot-1&&(f.reg.col==='F'||l.col===f.reg.col||l.col==='F'));
+  for(const b of blocks){
+    if(b.region||b.type==='heading') continue;
+    if(b.lines.every(inFloat)){b.drop=true;continue}
+    if(b.type==='eq'){ if(b.text.replace(/\s/g,'').length<5){b.drop=true;continue} b.region=regionFor(b.lines,'eq'); }
+    else if(b.type==='para'&&looksTable(b.text)) b.region=regionFor(b.lines,'eq');
+  }
+  // title: largest heading on page 1 before the first standard section heading
+  let title='',ti=-1,best=0;
+  for(let i=0;i<blocks.length;i++){
+    const b=blocks[i];
+    if(b.type==='heading' && (HEAD_RE.test(b.text))) break;
+    if(b.type==='heading' && b.page===0 && b.size>best){best=b.size;ti=i;}
+  }
+  if(ti>=0){title=blocks[ti].text;blocks.splice(ti,1);}
+  if(!title && meta && meta.length>8 && !/^(untitled|microsoft word)/i.test(meta)) title=meta;
+  const doc=buildDoc(title||fileName.replace(/\.pdf$/i,''),blocks,st);doc.body=body;return doc;
+}
+
+/* ---------- cropping pictures from the PDF ---------- */
+function trimWhite(ctx,x,y,w,h){
+  const d=ctx.getImageData(x,y,w,h).data;let x0=w,y0=h,x1=-1,y1=-1;
+  for(let j=0;j<h;j++)for(let i=0;i<w;i++){const k=(j*w+i)*4;if(d[k]<232||d[k+1]<232||d[k+2]<232){if(i<x0)x0=i;if(i>x1)x1=i;if(j<y0)y0=j;if(j>y1)y1=j}}
+  if(x1<0) return null;
+  const pad=10;x0=Math.max(0,x0-pad);y0=Math.max(0,y0-pad);x1=Math.min(w-1,x1+pad);y1=Math.min(h-1,y1+pad);
+  return {x:x+x0,y:y+y0,w:x1-x0+1,h:y1-y0+1};
+}
+async function cropRegions(pdf,doc,onProgress){
+  const byPage=new Map();
+  doc.sections.forEach(s=>s.paras.forEach(p=>{
+    if(!p.region) return;
+    if(s.skip){delete p.region;return}
+    const k=p.region.page;if(!byPage.has(k))byPage.set(k,[]);byPage.get(k).push(p);
+  }));
+  const scale=2.5;let done=0;
+  for(const [pi,ps] of byPage){
+    onProgress(++done,byPage.size);
+    const page=await pdf.getPage(pi+1);const vp=page.getViewport({scale});
+    const cv=document.createElement('canvas');cv.width=Math.ceil(vp.width);cv.height=Math.ceil(vp.height);
+    const ctx=cv.getContext('2d',{willReadFrequently:true});ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);
+    await page.render({canvasContext:ctx,viewport:vp}).promise;
+    for(const p of ps){
+      const r=p.region;delete p.region;
+      const [ax,ay]=vp.convertToViewportPoint(r.x0,r.top),[bx,by]=vp.convertToViewportPoint(r.x1,r.bot);
+      const x=Math.max(0,Math.floor(Math.min(ax,bx))),y=Math.max(0,Math.floor(Math.min(ay,by)));
+      const w=Math.min(cv.width-x,Math.ceil(Math.abs(bx-ax))),h=Math.min(cv.height-y,Math.ceil(Math.abs(by-ay)));
+      if(w<8||h<8) continue;
+      const t=trimWhite(ctx,x,y,w,h);if(!t) continue;
+      const out=document.createElement('canvas');out.width=t.w;out.height=t.h;
+      out.getContext('2d').drawImage(cv,t.x,t.y,t.w,t.h,0,0,t.w,t.h);
+      p.img=p.type==='figure'?out.toDataURL('image/jpeg',0.88):out.toDataURL('image/png');
+      p.wPts=+(t.w/scale).toFixed(1);
+    }
+    page.cleanup();cv.width=cv.height=0;
+  }
+}
+
+/* ---------- sample paper ---------- */
+const SAMPLE=`Sleep Spindle Density Predicts Overnight Memory Retention in Older Adults
+
+Maren Okafor¹, Tobias Lindqvist², Priya Raman¹
+
+¹Department of Psychology, Northfield University
+²Centre for Sleep Research, Halden Institute
+Correspondence: m.okafor@northfield.example
+
+Abstract
+Sleep spindles are brief bursts of 11–16 Hz brain activity that appear during non-REM sleep, and they are thought to help move new memories into long-term storage (Hartley et al., 2017). Spindle density falls with age, but whether this decline explains age-related memory loss is unclear [1–3]. We recorded overnight EEG in 42 adults aged 60–79 and tested word-pair recall before and after sleep. Participants with higher spindle density retained more word pairs (r = 0.41, p < 0.01), even after controlling for total sleep time. These results suggest that spindles are a promising target for interventions that protect memory in later life.
+
+1. Introduction
+Memory consolidation during sleep has been studied for more than a century [4, 7]. Newly learned information is thought to be replayed during non-REM sleep, i.e., the deeper stages of sleep that dominate the first half of the night (Moreno & Iqbal, 2019; Castell, 2020). Sleep spindles, bursts of activity lasting 0.5–2 seconds, may coordinate this replay between the hippocampus and the cortex (Fig. 1). Nakamura et al. (2018) showed that spindle density predicts next-day recall in young adults, e.g., after learning lists of paired words.
+Older adults produce roughly 40% fewer spindles than younger adults [8]. However, few studies have asked whether differences in spindle density among older adults relate to how much they remember the next day.
+
+2. Methods
+2.1 Participants
+Forty-two healthy adults (mean age 68.4 ± 5.1 years; 24 women) took part. None reported a diagnosed sleep disorder. The study was approved by the university ethics board, and all participants gave written consent.
+2.2 Procedure
+Participants learned 60 word pairs at 9 p.m. and were tested at 9:30 p.m. and again at 8 a.m. after a night of recorded sleep. We defined retention as the percentage of pairs recalled in the morning relative to the evening test (see Table 1).
+R = (N_morning / N_evening) × 100    (1)
+Spindles were detected automatically at electrode C3 using a validated algorithm [9]. Code is available at https://github.com/example/spindle-detect.
+
+Figure 1. Example of a sleep spindle recorded at electrode C3 during stage N2 sleep. The shaded region marks the 0.8-second event.
+
+Table 1. Participant characteristics and sleep measures (mean ± SD).
+
+3. Results
+Retention averaged 84.2% (SD = 9.6). Spindle density was positively correlated with retention (r = 0.41, p < 0.01; Fig. 2A), and this association remained when total sleep time was added as a covariate (β = 0.36, p = 0.02). Time spent in slow-wave sleep did not predict retention on its own (p = 0.31).
+
+4. Discussion
+Our findings extend earlier work in younger adults (Nakamura et al., 2018) to people in their sixties and seventies. Because spindle density can be increased with gentle sound played during sleep [10, 11], these results point toward a practical way to support memory in older adults. Future studies should test whether boosting spindles improves retention directly.
+
+Acknowledgments
+We thank the participants and the overnight lab staff. This work was funded by grant NR-2291.
+
+References
+[1] Hartley, J., Osei, K., & Blum, R. (2017). Spindles and memory across the lifespan. Journal of Sleep Studies, 12(3), 201–219. https://doi.org/10.0000/jss.2017.12
+[2] Moreno, L., & Iqbal, S. (2019). Replay during non-REM sleep. Neural Reviews, 8, 44–61.
+[3] Castell, D. (2020). Aging and the sleeping brain. Northfield Press.
+[4] Nakamura, H., Ruiz, P., & Adeyemi, T. (2018). Spindle density and next-day recall. Memory Science, 31(2), 115–130.`;
+
+
+
+/* ---------- helpers ---------- */
+function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+function plural(n,one,many){return n+' '+(n===1?one:(many||one+'s'))}
+const NOTE_ICON='<svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/></svg>';
+function rel(t){
+  if(!t) return '';
+  const s=(t-Date.now())/1000,f=new Intl.RelativeTimeFormat('en',{numeric:'auto'});
+  const a=Math.abs(s);
+  if(a<60) return 'just now';
+  if(a<3600) return f.format(Math.round(s/60),'minute');
+  if(a<86400) return f.format(Math.round(s/3600),'hour');
+  if(a<86400*30) return f.format(Math.round(s/86400),'day');
+  return new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
+}
+let statusTimer=null;
+function setStatus(msg,err,sticky){
+  const s=$('#status');clearTimeout(statusTimer);
+  s.textContent=msg||'';s.classList.toggle('err',!!err);
+  if(msg && !err && !sticky) statusTimer=setTimeout(()=>{if(s.textContent===msg)s.textContent=''},9000);
+}
+
+/* ---------- saved library (IndexedDB in this browser) ---------- */
+const mem={meta:new Map(),docs:new Map(),state:new Map()};
+let idb=null,storageWarned=false;
+function openIdb(){
+  return new Promise(res=>{
+    let done=false;const fin=v=>{if(!done){done=true;res(v)}};
+    setTimeout(()=>fin(null),4000);
+    try{
+      const r=indexedDB.open('paper-out-loud',1);
+      r.onupgradeneeded=()=>{const d=r.result;['meta','docs','state'].forEach(n=>{if(!d.objectStoreNames.contains(n))d.createObjectStore(n,{keyPath:'id'})})};
+      r.onsuccess=()=>fin(r.result);r.onerror=()=>fin(null);r.onblocked=()=>fin(null);
+    }catch(e){fin(null)}
+  });
+}
+function req(name,mode,fn){
+  return new Promise((res,rej)=>{
+    try{const t=idb.transaction(name,mode);const r=fn(t.objectStore(name));t.oncomplete=()=>res(r.result);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)}
+    catch(e){rej(e)}
+  });
+}
+function storageProblem(){
+  if(storageWarned) return;storageWarned=true;
+  setStatus('This window can’t save papers or notes (it may be a private window, or storage is turned off). Anything you add will be lost when it closes.',true);
+}
+const Store={
+  async put(n,v){mem[n].set(v.id,v);if(!idb){storageProblem();return}try{await req(n,'readwrite',o=>o.put(v))}catch(e){storageProblem()}},
+  async get(n,id){if(idb){try{const v=await req(n,'readonly',o=>o.get(id));if(v){mem[n].set(id,v);return v}}catch(e){}}return mem[n].get(id)},
+  async all(n){if(idb){try{return await req(n,'readonly',o=>o.getAll())}catch(e){}}return [...mem[n].values()]},
+  async del(n,id){mem[n].delete(id);if(idb){try{await req(n,'readwrite',o=>o.delete(id))}catch(e){}}}
+};
+let cur=null; // {id, meta, doc, state}
+let saveTimer=null;
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,400)}
+function saveNow(){clearTimeout(saveTimer);saveTimer=null;if(cur)Store.put('state',cur.state)}
+window.addEventListener('pagehide',saveNow);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)saveNow()});
+function countSpans(doc){let n=0;for(const s of doc.sections){n++;for(const p of s.paras)n+=p.type==='p'?(p.sentences||[p.raw]).length:(doc.v?0:1)}return n}
+function hashStr(s){let h=5381;for(let i=0;i<s.length;i++)h=(h*33)^s.charCodeAt(i);return (h>>>0).toString(36)}
+function blankState(id){return {id,pos:0,highlights:{},notes:{},include:{}}}
+
+/* ---------- rendering ---------- */
+const opts={titles:true,eq:true,caps:true,scroll:true};
+function spanOf(n){return document.querySelector('#docBody .s[data-n="'+n+'"]')}
+function decorate(sp){
+  if(!sp) return;
+  const n=sp.dataset.n;
+  sp.classList.toggle('hl',!!cur.state.highlights[n]);
+  const has=!!(cur.state.notes[n]&&cur.state.notes[n].text);
+  const b=sp.nextElementSibling;
+  if(b&&b.classList.contains('note-btn')){if(!has)b.remove()}
+  else if(has){const nb=el('button','note-btn');nb.type='button';nb.dataset.n=n;nb.setAttribute('aria-label','Open note');nb.innerHTML=NOTE_ICON;sp.after(nb)}
+}
+function render(){
+  const {doc,meta,state}=cur;
+  const head=$('#docHead'),body=$('#docBody');head.innerHTML='';body.innerHTML='';
+  head.append(el('p','eyebrow'+(meta.sample?' sample':''),meta.sample?'Sample paper, invented to show how this works':meta.label));
+  head.append(el('h1','doc-title',doc.title));
+  const s=doc.stats;const chips=[];
+  if(s.cite) chips.push(plural(s.cite,'citation'));
+  if(s.fig) chips.push(plural(s.fig,'figure pointer'));
+  if(s.links) chips.push(plural(s.links,'link'));
+  if(s.eq) chips.push(plural(s.eq,'equation'));
+  if(s.figs) chips.push(plural(s.figs,'figure or table','figures and tables'));
+  if(s.tables) chips.push(plural(s.tables,'table'));
+  if(s.foot) chips.push(plural(s.foot,'footnote line'));
+  const skipped=doc.sections.filter(x=>x.skip);const apx=skipped.filter(x=>x.skip==='appendix').length;skipped.filter(x=>x.skip!=='appendix').forEach(x=>chips.push(x.speak));if(apx)chips.push(apx===1?'the appendix':plural(apx,'appendix section'));
+  if(s.caps) chips.push(plural(s.caps,'caption')+' moved to the end');
+  if(s.headers) chips.push(plural(s.headers,'page header or number','page headers and numbers'));
+  if(s.front) chips.push(plural(s.front,'author or affiliation line'));
+  if(s.labels) chips.push(plural(s.labels,'stray figure label'));
+  if(chips.length){
+    const d=el('details','skipping');
+    const sum=chips.length>2?'Not read aloud: '+chips[0]+', '+chips[1]+' and '+(chips.length-2)+' more':'Not read aloud: '+chips.join(' and ');
+    d.append(el('summary',null,sum));const c=el('div','chips');chips.forEach(x=>c.append(el('span','chip',x)));d.append(c);head.append(d);
+  }
+  let n=0;
+  const mk=(text,kind,say)=>{const sp=el('span','s',text);sp.dataset.n=n++;sp.dataset.kind=kind;if(say)sp.dataset.say=say;return sp};
+  doc.sections.forEach((sec,si)=>{
+    const S=el('section','sec');S.id='sec-'+si;S.dataset.i=si;S.dataset.name=sec.speak;
+    if(sec.caps) S.dataset.caps='1';
+    const h=el('h2','sec-title');h.append(mk(sec.title,'heading',sec.speak+'.'));S.append(h);
+    const content=el('div','sec-body');
+    if(sec.skip){
+      const on=!!state.include[si];
+      S.dataset.skip=on?'0':'1';
+      const card=el('div','skip-card');
+      const msg=sec.skip==='refs'?'Reference list, not read aloud.':sec.skip==='appendix'?'Appendix, not read aloud.':'Paperwork section, not read aloud.';
+      const txt=el('span',null,on?'You chose to include this section.':msg);
+      const btn=el('button','btn sm',on?'Skip this section':'Read this section');
+      btn.addEventListener('click',()=>{
+        const inc=S.dataset.skip==='1';S.dataset.skip=inc?'0':'1';content.hidden=!inc;
+        txt.textContent=inc?'You chose to include this section.':msg;btn.textContent=inc?'Skip this section':'Read this section';
+        if(inc) state.include[si]=true; else delete state.include[si];
+        scheduleSave();buildQueue();renderToc();
+      });
+      card.append(txt,btn);S.append(card);content.hidden=!on;
+    }
+    if(sec.caps) S.append(el('p','note','Captions are collected here so they don’t interrupt the main text.'));
+    for(const p of sec.paras){
+      if(p.type==='eq'||p.type==='table'||p.type==='figure'){
+        if(!doc.v) n++; // keep numbering of papers saved before pictures existed
+        const kind=p.type==='figure'?(p.kind||'figure'):p.type;
+        const f=el('figure','vis vis-'+kind);
+        const label=p.type==='figure'?p.raw:(p.type==='eq'?'Equation':'Table');
+        if(p.img){
+          const im=el('img');im.src=p.img;im.alt=label;im.loading='lazy';im.decoding='async';
+          if(p.wPts&&doc.body) im.style.width=(p.wPts/doc.body).toFixed(2)+'em';
+          im.addEventListener('click',()=>openZoom(p.img,label,kind));
+          f.append(im);
+        } else if(p.type!=='figure') f.append(el('code',null,p.raw));
+        if(p.type==='figure') f.append(el('figcaption',null,p.raw));
+        content.append(f);continue;
+      }
+      const P=el('p');(p.sentences||[p.raw]).forEach(x=>{P.append(mk(x,'s'),' ')});content.append(P);
+    }
+    S.append(content);body.append(S);
+  });
+  $$('#docBody .s').forEach(decorate);
+}
+
+function renderToc(){
+  const secs=$$('#docBody .sec');
+  $$('.toc-list').forEach(list=>{
+    list.innerHTML='';
+    secs.forEach(S=>{
+      const b=el('button');b.type='button';b.dataset.i=S.dataset.i;
+      b.append(el('span',null,S.querySelector('.sec-title').textContent));
+      if(S.dataset.skip==='1') b.append(el('span','tag','skipped'));
+      else if(S.dataset.caps==='1'&&!opts.caps) b.append(el('span','tag','off'));
+      b.addEventListener('click',()=>{
+        closeDrawers();
+        const first=queue.findIndex(q=>q.closest('.sec')===S);
+        if(first>=0){idx=first;playing?restart():mark(false)}
+        S.scrollIntoView({block:'start',behavior:smooth()});
+      });
+      list.append(b);
+    });
+  });
+  updateToc();
+}
+function updateToc(){
+  const e=queue[idx];const si=e?e.closest('.sec').dataset.i:null;
+  $$('.toc-list button').forEach(b=>b.setAttribute('aria-current',b.dataset.i===si?'true':'false'));
+}
+
+/* ---------- queue & speech ---------- */
+let queue=[],idx=0,playing=false,token=0,voices=[],voice=null,rate=1,lock=null;
+const synth=window.speechSynthesis;
+function included(e){
+  const S=e.closest('.sec');
+  if(S.dataset.skip==='1') return false;
+  if(S.dataset.caps==='1'&&!opts.caps) return false;
+  const k=e.dataset.kind;
+  if(k==='heading'&&!opts.titles) return false;
+  if(k==='eq'&&!opts.eq) return false;
+  return true;
+}
+function buildQueue(){
+  const c=queue[idx];
+  queue=$$('#docBody .s').filter(included);
+  if(c){let i=queue.indexOf(c);if(i<0){i=queue.findIndex(q=>+q.dataset.n>=+c.dataset.n);if(i<0)i=queue.length-1}idx=Math.max(0,i)}
+  else idx=0;
+  $$('#docBody .sec[data-caps]').forEach(S=>S.classList.toggle('caps-off',!opts.caps));
+  $('#seek').max=Math.max(0,queue.length-1);
+  mark(false);
+}
+function smooth(){return matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}
+function mark(scroll){
+  $$('#docBody .s.on').forEach(x=>x.classList.remove('on'));
+  const e=queue[idx];
+  $('#seek').value=idx;
+  if(!e){$('#whereSec').textContent='—';$('#whereLeft').textContent='';return}
+  e.classList.add('on');
+  if(scroll&&opts.scroll) e.scrollIntoView({block:'center',behavior:smooth()});
+  $('#whereSec').textContent=e.closest('.sec').dataset.name;
+  let chars=0;for(let i=idx;i<queue.length;i++) chars+=(queue[i].dataset.say||queue[i].textContent).length;
+  const mins=Math.max(1,Math.round(chars/(14.5*rate)/60));
+  $('#whereLeft').textContent=(idx+1)+' of '+queue.length+' · about '+mins+' min left';
+  $('#hlBtn').setAttribute('aria-pressed',cur&&cur.state.highlights[e.dataset.n]?'true':'false');
+  updateToc();
+  if(cur&&cur.state.pos!==+e.dataset.n){cur.state.pos=+e.dataset.n;scheduleSave()}
+}
+function speak(){
+  if(!playing) return;
+  const e=queue[idx];
+  if(!e){finish();return}
+  mark(true);
+  const u=new SpeechSynthesisUtterance(e.dataset.say||e.textContent);
+  if(voice){u.voice=voice;u.lang=voice.lang}
+  u.rate=rate;
+  const my=++token;
+  u.onstart=()=>{if(my===token)fails=0};
+  u.onend=()=>{if(my!==token||!playing)return;fails=0;if(idx<queue.length-1){idx++;speak()}else finish()};
+  u.onerror=ev=>{
+    if(my!==token)return;
+    const code=ev.error||'unknown';
+    if(code==='interrupted'||code==='canceled')return;
+    fails++;
+    if(code==='not-allowed'){playing=false;updatePlay();setStatus('The browser blocked the voice until you interact with the page. Press Play again.',true);return}
+    if(fails<=2){setTimeout(()=>{if(playing&&my===token)speak()},400*fails);return} // brief hiccup: try the same sentence again
+    const alt=fallbackVoice(voice);
+    if(alt&&fails<=4){
+      const old=voice;voice=alt;$('#voice').value=voices.indexOf(alt);saveSettings();
+      setStatus('The '+niceVoice(old)+' voice isn\u2019t responding ('+code+'), so reading switched to '+niceVoice(alt)+'. Natural voices need a working internet connection. You can pick a voice in Settings.',true,true);
+      setTimeout(()=>{if(playing&&my===token)speak()},300);return;
+    }
+    playing=false;updatePlay();
+    setStatus('The voice stopped (error: '+code+'). Press Play to try again, or choose a different voice in Settings.',true);
+  };
+  try{synth.resume()}catch(_){}
+  synth.speak(u);
+}
+let fails=0;
+function niceVoice(v){return v?v.name.replace(/^Microsoft\s+/,'').replace(/\s+Online\s+\(Natural\)/,'').replace(/\s+-\s+.*$/,''):'selected'}
+// prefer a voice installed on this device (it works offline), in the same language
+function fallbackVoice(cur){
+  const lang=(cur&&cur.lang||'en').slice(0,2);
+  const pool=voices.filter(v=>v!==cur);
+  return pool.find(v=>v.localService&&v.lang.slice(0,2)===lang)||pool.find(v=>v.localService)||pool.find(v=>v.lang.slice(0,2)===lang)||null;
+}
+function startSpeaking(){
+  // speak straight from the click when nothing is queued; a cancel first needs a moment to settle
+  if(synth.speaking||synth.pending){synth.cancel();setTimeout(speak,80)} else speak();
+}
+function play(){
+  if(!synth){setStatus('This browser can’t read aloud. Open the page in Microsoft Edge.',true);return}
+  if(!queue.length) return;
+  if(idx>=queue.length) idx=0;
+  playing=true;fails=0;updatePlay();token++;startSpeaking();
+  try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(l=>{lock=l}).catch(()=>{})}catch(_){}
+}
+function pause(){playing=false;token++;if(synth)synth.cancel();updatePlay();try{lock&&lock.release();lock=null}catch(_){}}
+function restart(){token++;fails=0;mark(true);startSpeaking()}
+function finish(){pause();setStatus('Finished reading. Click any sentence to hear it again.')}
+function toggle(){playing?pause():play()}
+function go(i){if(!queue.length)return;idx=Math.max(0,Math.min(queue.length-1,i));playing?restart():mark(true)}
+function secOf(i){return queue[i]?queue[i].closest('.sec'):null}
+function nextSec(){const s=secOf(idx);const i=queue.findIndex((q,j)=>j>idx&&q.closest('.sec')!==s);if(i>=0)go(i)}
+function prevSec(){
+  const s=secOf(idx);const first=queue.findIndex(q=>q.closest('.sec')===s);
+  if(first<idx){go(first);return}
+  const ps=secOf(first-1);if(!ps){go(0);return}
+  go(queue.findIndex(q=>q.closest('.sec')===ps));
+}
+function updatePlay(){
+  $('#playBtn').setAttribute('aria-label',playing?'Pause':'Play');
+  $('#playIcon').innerHTML=playing?'<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';
+}
+
+/* ---------- highlights & notes ---------- */
+function toggleHl(n,announce){
+  if(!cur) return;
+  n=String(n);
+  const on=!cur.state.highlights[n];
+  if(on) cur.state.highlights[n]=Date.now(); else delete cur.state.highlights[n];
+  decorate(spanOf(n));scheduleSave();renderNotes();
+  const e=queue[idx];if(e&&e.dataset.n===n)$('#hlBtn').setAttribute('aria-pressed',on?'true':'false');
+  if(announce) setStatus(on?'Highlighted.':'Highlight removed.');
+}
+let noteN=null,resumeAfter=false;
+function openNote(n){
+  if(!cur) return;
+  closePop();closeDrawers();closeSettings();
+  resumeAfter=playing;if(playing)pause();
+  noteN=String(n);
+  const sp=spanOf(noteN);
+  $('#noteQuote').textContent=sp?sp.textContent:'';
+  $('#noteText').value=(cur.state.notes[noteN]&&cur.state.notes[noteN].text)||'';
+  $('#noteDelete').hidden=!$('#noteText').value;
+  $('#noteDialog').hidden=false;
+  $('#noteText').focus();
+}
+function setNote(n,text){
+  if(text.trim()) cur.state.notes[n]={text,at:Date.now()}; else delete cur.state.notes[n];
+  decorate(spanOf(n));scheduleSave();renderNotes();
+}
+function closeNote(){
+  if(noteN==null) return;
+  setNote(noteN,$('#noteText').value);saveNow();
+  $('#noteDialog').hidden=true;
+  const sp=spanOf(noteN);noteN=null;
+  if(resumeAfter) play(); else if(sp){const b=sp.nextElementSibling;(b&&b.classList.contains('note-btn')?b:$('#playBtn')).focus()}
+}
+function markedNs(){
+  if(!cur) return [];
+  const ks=new Set([...Object.keys(cur.state.highlights),...Object.keys(cur.state.notes).filter(k=>cur.state.notes[k].text)]);
+  return [...ks].map(Number).sort((a,b)=>a-b);
+}
+function renderNotes(){
+  const ns=markedNs();
+  const c=$('#notesCount');c.textContent=ns.length;c.hidden=!ns.length;
+  $('#notesEmpty').hidden=!!ns.length;$('#notesActions').hidden=!ns.length;
+  const list=$('#notesList');list.innerHTML='';
+  for(const n of ns){
+    const sp=spanOf(n);if(!sp) continue;
+    const li=el('li','nitem');
+    li.append(el('div','nsec',sp.closest('.sec').dataset.name));
+    const q=el('blockquote','nquote'+(cur.state.highlights[n]?' is-hl':''));q.append(el('span',null,sp.textContent));li.append(q);
+    const note=cur.state.notes[n];
+    if(note&&note.text) li.append(el('p','ntext',note.text));
+    const row=el('div','row');
+    const goB=el('button','btn sm','Go to sentence');
+    goB.onclick=()=>{closeDrawers();const i=queue.indexOf(sp);if(i>=0){idx=i;playing?restart():mark(true)}else sp.scrollIntoView({block:'center',behavior:smooth()})};
+    const ed=el('button','btn sm quiet',note&&note.text?'Edit note':'Add note');ed.onclick=()=>openNote(n);
+    row.append(goB,ed);
+    if(cur.state.highlights[n]){const rm=el('button','btn sm quiet','Remove highlight');rm.onclick=()=>toggleHl(n);row.append(rm)}
+    li.append(row);list.append(li);
+  }
+}
+function notesText(){
+  const lines=[cur.doc.title,'Highlights and notes from Paper Out Loud, '+new Date().toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'}),''];
+  let lastSec='';
+  for(const n of markedNs()){
+    const sp=spanOf(n);if(!sp) continue;
+    const secName=sp.closest('.sec').dataset.name;
+    if(secName!==lastSec){lines.push('','== '+secName+' ==','');lastSec=secName}
+    lines.push('“'+sp.textContent+'”');
+    const note=cur.state.notes[n];
+    if(note&&note.text) lines.push('Note: '+note.text);
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+let downloads=null;
+if(window.claude&&typeof window.claude.use==='function'){
+  window.claude.use('downloads').then(d=>{downloads=d;if(!d)$('#exportBtn').hidden=true}).catch(()=>{$('#exportBtn').hidden=true});
+}
+// returns 'saved' | 'declined' | 'failed'
+async function saveFile(name,text,type){
+  if(downloads){
+    try{await downloads.save({filename:name,data:text});return 'saved'}
+    catch(e){return e&&e.code==='declined'?'declined':'failed'}
+  }
+  if(!window.claude){
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.append(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);return 'saved';
+  }
+  return 'failed';
+}
+async function exportNotes(){
+  if(!cur) return;
+  const name=(cur.doc.title.replace(/[^\w\s-]/g,'').trim().slice(0,60)||'Paper')+' - notes.txt';
+  const res=await saveFile(name,notesText(),'text/plain');
+  if(res==='saved') setStatus('Notes saved as a file.');
+  else if(res==='failed') setStatus('The notes file couldn’t be saved here. Use “Copy all” and paste them into a document instead.',true);
+}
+
+/* ---------- backup & restore ---------- */
+function backupInfo(){
+  const t=store.get('pol-lastBackup',0);
+  $('#bkInfo').textContent=t?'Last backup saved '+rel(t)+' from this browser.':'No backup saved yet from this browser.';
+}
+async function makeBackup(){
+  saveNow();
+  const metas=await Store.all('meta'),states=new Map((await Store.all('state')).map(x=>[x.id,x]));
+  if(cur) states.set(cur.id,cur.state);
+  const papers=[];
+  for(const m of metas){const d=await Store.get('docs',m.id);if(d)papers.push({meta:m,doc:d.doc,state:states.get(m.id)||blankState(m.id)})}
+  if(!papers.length){setStatus('There’s nothing to back up yet.',true);return}
+  const data={app:'paper-out-loud',version:1,savedAt:new Date().toISOString(),settings:store.get('pol-settings',{}),papers};
+  const day=new Date().toISOString().slice(0,10);
+  const res=await saveFile('Paper Out Loud backup '+day+'.json',JSON.stringify(data),'application/json');
+  if(res==='saved'){store.set('pol-lastBackup',Date.now());backupInfo();setStatus('Backup saved with '+plural(papers.length,'paper')+'. Keep the file somewhere safe.')}
+  else if(res==='failed') setStatus('The backup couldn’t be saved here. Try the downloaded version of the app in Edge instead.',true);
+}
+function mergeState(a,b){
+  const m={id:a.id,pos:a.pos||b.pos||0,highlights:Object.assign({},b.highlights,a.highlights),notes:Object.assign({},b.notes),include:Object.assign({},b.include,a.include)};
+  for(const [k,v] of Object.entries(a.notes||{})){const o=m.notes[k];if(!o||(v.at||0)>=(o.at||0))m.notes[k]=v}
+  return m;
+}
+async function restoreBackup(file){
+  let data;
+  try{data=JSON.parse(await file.text())}catch(e){data=null}
+  if(!data||data.app!=='paper-out-loud'||!Array.isArray(data.papers)){setStatus('That file isn’t a Paper Out Loud backup. Choose a file named like “Paper Out Loud backup 2026-09-27.json”.',true);return}
+  let added=0,merged=0,marks=0;
+  for(const p of data.papers){
+    if(!p||!p.meta||!p.meta.id||!p.doc||!Array.isArray(p.doc.sections)) continue;
+    const id=p.meta.id;
+    const st=Object.assign(blankState(id),p.state||{},{id});
+    marks+=Object.keys(st.highlights||{}).length+Object.values(st.notes||{}).filter(x=>x&&x.text).length;
+    const existing=await Store.get('meta',id);
+    if(existing){
+      const mine=(cur&&cur.id===id)?cur.state:((await Store.get('state',id))||blankState(id));
+      const m=mergeState(mine,st);
+      if(cur&&cur.id===id) cur.state=m;
+      await Store.put('state',m);merged++;
+    } else {
+      await Store.put('docs',{id,doc:p.doc});await Store.put('state',st);
+      await Store.put('meta',Object.assign({},p.meta,{id,total:p.meta.total||countSpans(p.doc)}));added++;
+    }
+  }
+  if(!added&&!merged){setStatus('That backup didn’t contain any papers.',true);return}
+  if(data.settings&&typeof data.settings==='object') applySettingsObj(data.settings);
+  store.set('pol-seeded',true);
+  if(cur&&document.body.dataset.view==='reader') await openPaper(cur.id); else await renderLibrary();
+  const parts=[];if(added)parts.push(plural(added,'paper')+' added');if(merged)parts.push(plural(merged,'paper')+' already here and updated');
+  setStatus('Backup restored: '+parts.join(', ')+'. It held '+plural(marks,'highlight or note','highlights and notes')+'.',false,true);
+}
+
+function copyNotes(){
+  const text=notesText();
+  const fallback=()=>{const t=el('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';document.body.append(t);t.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}t.remove();setStatus(ok?'Copied. Paste them into any document.':'Copying isn’t allowed here. Use “Save as a file” instead.',!ok)};
+  try{navigator.clipboard.writeText(text).then(()=>setStatus('Copied. Paste them into any document.'),fallback)}catch(e){fallback()}
+}
+
+/* ---------- sentence menu ---------- */
+let popFor=null,popReturn=null;
+function showPop(sp,x,y){
+  popFor=sp;popReturn=document.activeElement;
+  const n=sp.dataset.n;
+  $('#popPlay').disabled=!queue.includes(sp);
+  $('#popHl span').textContent=cur.state.highlights[n]?'Remove highlight':'Highlight';
+  $('#popNote span').textContent=cur.state.notes[n]&&cur.state.notes[n].text?'Edit note':'Add note';
+  const pop=$('#pop');pop.hidden=false;
+  const rects=[...sp.getClientRects()];
+  const r=rects.find(q=>y>=q.top-2&&y<=q.bottom+2)||rects[rects.length-1]||sp.getBoundingClientRect();
+  const pw=pop.offsetWidth,ph=pop.offsetHeight,vw=innerWidth,vh=innerHeight;
+  const playerTop=document.querySelector('.player-in').getBoundingClientRect().top;
+  let left=Math.min(Math.max(12,x-pw/2),vw-pw-12);
+  let top=r.bottom+8;
+  if(top+ph>playerTop-8) top=Math.max(12,r.top-ph-8);
+  pop.style.left=left+'px';pop.style.top=top+'px';
+  (queue.includes(sp)?$('#popPlay'):$('#popHl')).focus({preventScroll:true});
+}
+function closePop(){if($('#pop').hidden)return;$('#pop').hidden=true;popFor=null}
+$('#popPlay').onclick=()=>{const sp=popFor;closePop();const i=queue.indexOf(sp);if(i<0)return;idx=i;playing?restart():play()};
+$('#popHl').onclick=()=>{const sp=popFor;closePop();toggleHl(sp.dataset.n)};
+$('#popNote').onclick=()=>{const sp=popFor;closePop();openNote(sp.dataset.n)};
+$('#docBody').addEventListener('click',e=>{
+  const nb=e.target.closest('.note-btn');if(nb){openNote(nb.dataset.n);return}
+  const sp=e.target.closest('.s');if(!sp) return;
+  if(window.getSelection&&String(window.getSelection()).length>2) return;
+  showPop(sp,e.clientX,e.clientY);
+});
+document.addEventListener('pointerdown',e=>{
+  if(!$('#pop').hidden&&!e.target.closest('#pop')&&!e.target.closest('#docBody .s')) closePop();
+  if(!$('#settings').hidden&&!e.target.closest('#settings')&&!e.target.closest('#setBtn')) closeSettings();
+});
+window.addEventListener('wheel',closePop,{passive:true});
+window.addEventListener('touchmove',closePop,{passive:true});
+
+/* ---------- drawers & settings ---------- */
+function openDrawer(id,btn){
+  closePop();closeSettings();closeDrawers();
+  $('#scrim').hidden=false;const d=$('#'+id);d.hidden=false;btn&&btn.setAttribute('aria-expanded','true');
+  d.querySelector('.drawer-close').focus();
+}
+function closeDrawers(){
+  $('#scrim').hidden=true;
+  $$('.drawer').forEach(d=>d.hidden=true);
+  $('#contentsBtn').setAttribute('aria-expanded','false');$('#notesBtn').setAttribute('aria-expanded','false');
+}
+function openSettings(){closePop();closeDrawers();$('#settings').hidden=false;$('#setBtn').setAttribute('aria-expanded','true')}
+function closeSettings(){$('#settings').hidden=true;$('#setBtn').setAttribute('aria-expanded','false')}
+$('#contentsBtn').onclick=e=>openDrawer('contentsDrawer',e.currentTarget);
+$('#notesBtn').onclick=e=>openDrawer('notesDrawer',e.currentTarget);
+$('#scrim').onclick=closeDrawers;
+$$('.drawer-close').forEach(b=>b.onclick=closeDrawers);
+$('#setBtn').onclick=()=>$('#settings').hidden?openSettings():closeSettings();
+$('#exportBtn').onclick=exportNotes;
+$('#copyBtn').onclick=copyNotes;
+$('#noteDone').onclick=closeNote;
+$('#noteDelete').onclick=()=>{$('#noteText').value='';closeNote()};
+$('#noteText').addEventListener('input',()=>{if(noteN!=null){setNote(noteN,$('#noteText').value);$('#noteDelete').hidden=!$('#noteText').value}});
+$('#noteDialog').addEventListener('pointerdown',e=>{if(e.target.id==='noteDialog')closeNote()});
+
+/* ---------- voices & settings ---------- */
+const saved=store.get('pol-settings',{});
+rate=saved.rate||1;Object.assign(opts,saved.opts||{});
+let fs=saved.fs||null;
+function saveSettings(){store.set('pol-settings',{rate,voice:voice&&voice.name,fs,opts})}
+function voiceHint(){
+  const h=$('#voiceHint');
+  if(voices.some(v=>/natural|neural|premium|enhanced/i.test(v.name))){h.hidden=true;return}
+  const ua=navigator.userAgent;h.hidden=false;
+  if(/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1)) h.textContent='For better voices, open Settings → Accessibility → Spoken Content → Voices → English, download a voice marked Premium or Enhanced, then reopen this page.';
+  else if(/Android/.test(ua)) h.textContent='For better voices, open Settings, search for “Text-to-speech output”, choose Speech Services by Google, install English voice data, then reopen this page.';
+  else h.textContent='For the most natural voices, open this page in Microsoft Edge and choose a voice marked “Natural”.';
+}
+function loadVoices(){
+  if(!synth) return;
+  voices=synth.getVoices().slice();
+  if(!voices.length) return;
+  const score=v=>(/natural|neural|premium|enhanced|online/i.test(v.name)?0:4)+(/^en/i.test(v.lang)?0:2)+(/^en-US/i.test(v.lang)?0:1);
+  voices.sort((a,b)=>score(a)-score(b)||a.name.localeCompare(b.name));
+  const sel=$('#voice');sel.innerHTML='';
+  voices.forEach((v,i)=>{const o=el('option',null,v.name.replace(/^Microsoft\s+/,'').replace(/\s+Online\s+\(Natural\)/,' (Natural)')+' · '+v.lang);o.value=i;sel.append(o)});
+  let i=voices.findIndex(v=>v.name===saved.voice);if(i<0)i=0;
+  voice=voices[i];sel.value=i;
+  voiceHint();
+}
+if(synth){loadVoices();if(synth.addEventListener)synth.addEventListener('voiceschanged',loadVoices);else synth.onvoiceschanged=loadVoices}
+function curFs(){return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fs'))||23}
+function applyFs(){if(fs)document.documentElement.style.setProperty('--fs',fs+'px');$('#sizeOut').textContent=Math.round(curFs())+' px'}
+applyFs();
+function applySettingsObj(o){
+  if(o.rate) rate=+o.rate;
+  if(o.opts) Object.assign(opts,o.opts);
+  if(o.fs) fs=+o.fs;
+  applyFs();
+  $('#rate').value=rate;$('#rateOut').textContent=rate.toFixed(1)+'×';
+  [['optTitles','titles'],['optCaps','caps'],['optScroll','scroll']].forEach(([id,k])=>{$('#'+id).checked=!!opts[k]});
+  if(o.voice){saved.voice=o.voice;const i=voices.findIndex(v=>v.name===o.voice);if(i>=0){voice=voices[i];$('#voice').value=i}}
+  saveSettings();
+}
+
+/* ---------- enlarged pictures ---------- */
+let zoomReturn=null,zoomScale=1;
+function openZoom(src,label,kind){
+  closePop();zoomReturn=document.activeElement;zoomScale=1;
+  const z=$('#zoom');z.className='zoom vis-'+kind;
+  $('#zoomTitle').textContent=label.length>90?label.slice(0,88)+'…':label;
+  const im=$('#zoomImg');im.alt=label;im.src=src;im.style.width='100%';
+  im.onload=()=>{im.style.maxWidth=Math.max(im.naturalWidth,innerWidth-32)+'px'};
+  z.hidden=false;$('#zoomClose').focus();
+}
+function closeZoom(){if($('#zoom').hidden)return;$('#zoom').hidden=true;zoomReturn&&zoomReturn.focus&&zoomReturn.focus()}
+$('#zoomClose').onclick=closeZoom;
+$('#zoomBigger').onclick=()=>{zoomScale=zoomScale>=3?1:zoomScale+1;const im=$('#zoomImg');im.style.width=(100*zoomScale)+'%';im.style.maxWidth='none';$('#zoomBigger').textContent=zoomScale>=3?'Fit to screen':'Zoom in'};
+
+/* ---------- library ---------- */
+function setView(v){
+  document.body.dataset.view=v;
+  $('#readerView').hidden=v!=='reader';$('#libraryView').hidden=v!=='library';
+}
+async function showLibrary(){
+  pause();closePop();closeDrawers();closeSettings();saveNow();
+  setView('library');await renderLibrary();window.scrollTo(0,0);
+}
+async function renderLibrary(){
+  const metas=(await Store.all('meta')).sort((a,b)=>(b.openedAt||0)-(a.openedAt||0));
+  const states=new Map((await Store.all('state')).map(s=>[s.id,s]));
+  if(cur) states.set(cur.id,cur.state);
+  const ul=$('#libList');ul.innerHTML='';
+  $('#libEmpty').hidden=metas.length>0;
+  $('#backToReading').hidden=!cur;
+  backupInfo();
+  for(const m of metas){
+    const s=states.get(m.id)||blankState(m.id);
+    const pct=m.total&&s.pos?Math.min(100,Math.round((s.pos+1)/m.total*100)):0;
+    const hls=Object.keys(s.highlights||{}).length,nts=Object.values(s.notes||{}).filter(x=>x.text).length;
+    const parts=['Opened '+rel(m.openedAt),pct?pct+'% listened':'Not started'];
+    if(hls) parts.push(plural(hls,'highlight'));
+    if(nts) parts.push(plural(nts,'note'));
+    const li=el('li','lib-item');
+    const open=el('button','lib-open');open.type='button';
+    open.append(el('span','lib-name',m.title),el('span','lib-meta',parts.join(' · ')));
+    const bar=el('span','lib-prog');const fill=el('i');fill.style.width=pct+'%';bar.append(fill);open.append(bar);
+    open.onclick=()=>openPaper(m.id);
+    const rm=el('button','btn quiet sm','Remove');
+    const conf=el('div','lib-confirm');conf.hidden=true;
+    const yes=el('button','btn danger sm','Remove paper'),no=el('button','btn quiet sm','Keep it');
+    conf.append(el('span',null,hls||nts?'Remove this paper and its highlights and notes?':'Remove this paper?'),yes,no);
+    rm.onclick=()=>{conf.hidden=false;no.focus()};
+    no.onclick=()=>{conf.hidden=true;rm.focus()};
+    yes.onclick=()=>removePaper(m.id);
+    li.append(open,rm,conf);ul.append(li);
+  }
+}
+async function removePaper(id){
+  await Store.del('meta',id);await Store.del('docs',id);await Store.del('state',id);
+  if(cur&&cur.id===id){pause();cur=null;queue=[];idx=0;$('#docHead').innerHTML='';$('#docBody').innerHTML='';renderNotes()}
+  await renderLibrary();setStatus('Removed.');
+}
+async function openPaper(id,o={}){
+  pause();closePop();closeDrawers();closeSettings();saveNow();
+  const meta=await Store.get('meta',id),rec=await Store.get('docs',id);
+  if(!meta||!rec){setStatus('That paper couldn’t be found. It may have been removed.',true);showLibrary();return}
+  const state=(await Store.get('state',id))||blankState(id);
+  state.highlights=state.highlights||{};state.notes=state.notes||{};state.include=state.include||{};
+  meta.openedAt=Date.now();Store.put('meta',meta);
+  cur={id,meta,doc:rec.doc,state};
+  setView('reader');
+  render();queue=[];idx=0;buildQueue();renderToc();renderNotes();
+  if(state.pos>0){
+    const i=queue.findIndex(q=>+q.dataset.n>=state.pos);
+    if(i>0){
+      idx=i;mark(false);
+      requestAnimationFrame(()=>queue[idx]&&queue[idx].scrollIntoView({block:'center'}));
+      setStatus((o.welcome?'Welcome back. ':'')+'Picked up where you stopped, in '+queue[i].closest('.sec').dataset.name+'. Press Play to continue.');
+      return;
+    }
+  }
+  window.scrollTo(0,0);
+  if(o.fresh) setStatus('Ready. Press Play, or click any sentence to read from there, highlight it or add a note.');
+}
+async function addPaper(id,doc,info){
+  const existing=await Store.get('meta',id);
+  if(existing&&doc.v){
+    // upgrade a copy saved before pictures existed, if nothing is attached to its sentences yet
+    const old=await Store.get('docs',id),st=await Store.get('state',id);
+    const marks=st?Object.keys(st.highlights||{}).length+Object.keys(st.notes||{}).length:0;
+    if(old&&!old.doc.v&&!marks){await Store.put('docs',{id,doc});existing.total=countSpans(doc);existing.title=doc.title;await Store.put('meta',existing);if(st){st.pos=0;await Store.put('state',st)}}
+  }
+  if(existing){await openPaper(id);setStatus('You’ve opened this paper before, so your place, highlights and notes are back.');return}
+  const now=Date.now();
+  await Store.put('docs',{id,doc});
+  await Store.put('state',blankState(id));
+  await Store.put('meta',{id,title:doc.title,label:info.label,sample:!!info.sample,addedAt:now,openedAt:now,total:countSpans(doc)});
+  await openPaper(id,{fresh:!info.sample});
+}
+
+/* ---------- opening files ---------- */
+async function openFile(f){
+  if(!f) return;
+  pause();$('#pastePanel').hidden=true;
+  const isPdf=/\.pdf$/i.test(f.name)||f.type==='application/pdf';
+  try{
+    if(isPdf){
+      if(!window.pdfjsLib){setStatus('The PDF reader didn’t load. Check the internet connection and reload the page.',true);return}
+      setStatus('Opening '+f.name+'…',false,true);
+      const buf=new Uint8Array(await f.arrayBuffer());
+      const {pages,meta,pdf}=await extractPdf(buf,(p,n)=>setStatus('Reading page '+p+' of '+n+'…',false,true));
+      const doc=pdfToDoc(pages,meta,f.name);
+      if(doc){
+        try{await cropRegions(pdf,doc,(p,n)=>setStatus('Preparing equations, tables and figures ('+p+' of '+n+')…',false,true))}
+        catch(e){doc.sections.forEach(s=>s.paras.forEach(p=>{delete p.region}))}
+        try{pdf.destroy()}catch(_){}
+      }
+      if(!doc){setStatus('This PDF looks like a scanned image, so there’s no text to read. Open it in Microsoft Word (it converts scans to text), save it as a PDF, and try that file.',true);return}
+      await addPaper('f:'+f.name+':'+f.size,doc,{label:f.name+' · '+plural(pages.length,'page')});
+    } else if(/\.txt$/i.test(f.name)||/^text\//.test(f.type)){
+      const t=await f.text();
+      await addPaper('t:'+f.name+':'+f.size,parsePlainText(t,f.name.replace(/\.txt$/i,'')),{label:f.name});
+    } else {
+      setStatus('Paper Out Loud opens PDF and plain-text files. For a Word document, choose File, then Save As, then PDF in Word, and open that file.',true);
+    }
+  }catch(err){
+    if(err&&err.name==='PasswordException') setStatus('This PDF is password-protected. Open it in Edge, print it to a new PDF, and open that copy instead.',true);
+    else setStatus('This file couldn’t be opened. '+(err&&err.message?'('+err.message+')':''),true);
+  }
+}
+
+/* ---------- wiring ---------- */
+const pick=()=>$('#fileInput').click();
+$('#openBtn').onclick=pick;$('#openTop').onclick=pick;
+$('#fileInput').onchange=e=>{openFile(e.target.files[0]);e.target.value=''};
+$('#libraryBtn').onclick=showLibrary;
+$('#backupBtn').onclick=makeBackup;
+$('#restoreBtn').onclick=()=>$('#restoreInput').click();
+$('#restoreInput').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)restoreBackup(f)};
+$('#backToReading').onclick=()=>{if(cur)openPaper(cur.id)};
+$('#pasteBtn').onclick=()=>{$('#pastePanel').hidden=false;$('#pasteArea').focus()};
+$('#pasteCancel').onclick=()=>{$('#pastePanel').hidden=true};
+$('#pasteGo').onclick=async()=>{
+  const t=$('#pasteArea').value.trim();
+  if(t.length<20){setStatus('Paste some text into the box first.',true);return}
+  $('#pastePanel').hidden=true;$('#pasteArea').value='';
+  await addPaper('p:'+hashStr(t),parsePlainText(t),{label:'Pasted text'});
+};
+$('#playBtn').onclick=toggle;
+$('#nextS').onclick=()=>go(idx+1);
+$('#prevS').onclick=()=>go(idx-1);
+$('#hlBtn').onclick=()=>{const e=queue[idx];if(e)toggleHl(e.dataset.n,true)};
+$('#noteBtn').onclick=()=>{const e=queue[idx];if(e)openNote(e.dataset.n)};
+$('#seek').addEventListener('input',e=>{idx=+e.target.value;mark(true)});
+$('#seek').addEventListener('change',e=>go(+e.target.value));
+const rateEl=$('#rate');rateEl.value=rate;$('#rateOut').textContent=rate.toFixed(1)+'×';
+rateEl.addEventListener('input',()=>{rate=+rateEl.value;$('#rateOut').textContent=rate.toFixed(1)+'×'});
+rateEl.addEventListener('change',()=>{saveSettings();if(playing)restart();else mark(false)});
+$('#voice').onchange=e=>{voice=voices[+e.target.value];saveSettings();if(playing)restart()};
+$('#voiceTest').onclick=()=>{
+  if(!synth) return;
+  pause();
+  const u=new SpeechSynthesisUtterance('This is how your papers will sound with this voice.');
+  if(voice){u.voice=voice;u.lang=voice.lang}u.rate=rate;
+  u.onend=()=>setStatus('The '+niceVoice(voice)+' voice works.');
+  u.onerror=ev=>{if(ev.error==='interrupted'||ev.error==='canceled')return;setStatus('The '+niceVoice(voice)+' voice didn\u2019t work (error: '+(ev.error||'unknown')+'). '+(voice&&!voice.localService?'This is an online voice, so check the internet connection or choose one without “Natural” in its name.':'Try a different voice.'),true)};
+  synth.cancel();synth.speak(u);
+};
+$('#bigger').onclick=()=>{fs=Math.min(44,curFs()+2);applyFs();saveSettings();if(queue[idx])queue[idx].scrollIntoView({block:'center'})};
+$('#smaller').onclick=()=>{fs=Math.max(16,curFs()-2);applyFs();saveSettings();if(queue[idx])queue[idx].scrollIntoView({block:'center'})};
+[['optTitles','titles'],['optCaps','caps'],['optScroll','scroll']].forEach(([id,k])=>{
+  const c=$('#'+id);c.checked=!!opts[k];
+  c.onchange=()=>{opts[k]=c.checked;saveSettings();if(cur){buildQueue();renderToc()}};
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(!$('#zoom').hidden){closeZoom();return}
+    if(!$('#noteDialog').hidden){closeNote();return}
+    if(!$('#pop').hidden){const r=popReturn;closePop();r&&r.focus&&r.focus();return}
+    if(!$('#settings').hidden){closeSettings();$('#setBtn').focus();return}
+    if(!$('#scrim').hidden){closeDrawers();return}
+    return;
+  }
+  if(!$('#noteDialog').hidden||!$('#zoom').hidden||document.body.dataset.view!=='reader') return;
+  const tag=e.target.tagName;
+  if(['INPUT','TEXTAREA','SELECT'].includes(tag)||e.ctrlKey||e.metaKey||e.altKey) return;
+  if(e.key===' '&&tag!=='BUTTON'){e.preventDefault();toggle()}
+  else if(e.key==='ArrowRight'){e.preventDefault();go(idx+1)}
+  else if(e.key==='ArrowLeft'){e.preventDefault();go(idx-1)}
+  else if(e.key===']') nextSec();
+  else if(e.key==='[') prevSec();
+  else if(e.key==='h'||e.key==='H'){const q=queue[idx];if(q)toggleHl(q.dataset.n,true)}
+  else if(e.key==='n'||e.key==='N'){const q=queue[idx];if(q){e.preventDefault();openNote(q.dataset.n)}}
+});
+const drop=$('#drop');let dragDepth=0;
+window.addEventListener('dragenter',e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes('Files')){dragDepth++;drop.hidden=false}});
+window.addEventListener('dragleave',()=>{dragDepth=Math.max(0,dragDepth-1);if(!dragDepth)drop.hidden=true});
+window.addEventListener('dragover',e=>e.preventDefault());
+window.addEventListener('drop',e=>{e.preventDefault();dragDepth=0;drop.hidden=true;const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(!f)return;if(/\.json$/i.test(f.name))restoreBackup(f);else openFile(f)});
+window.addEventListener('beforeunload',()=>{saveNow();if(synth)synth.cancel()});
+
+/* ---------- start ---------- */
+(async function init(){
+  if(!synth) setStatus('This browser can’t read aloud. Open the page in Microsoft Edge.',true);
+  idb=await openIdb();
+  if(idb){try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{})}catch(e){}}
+  const metas=await Store.all('meta');
+  if(!metas.length&&!store.get('pol-seeded',false)){
+    store.set('pol-seeded',true);
+    await addPaper('sample',parsePlainText(SAMPLE),{label:'Sample paper',sample:true});
+    if(!idb) storageProblem();
+    return;
+  }
+  if(!idb) storageProblem();
+  if(metas.length){
+    metas.sort((a,b)=>(b.openedAt||0)-(a.openedAt||0));
+    await openPaper(metas[0].id,{welcome:true});
+  } else await showLibrary();
+})();
+})();
+</script>
+
+</body>
+</html>
