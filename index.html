@@ -137,6 +137,7 @@ body[data-view="library"] #contentsBtn,body[data-view="library"] #notesBtn,body[
 .eyebrow{font-size:15px;color:var(--muted);margin:0 0 14px;font-weight:700}
 .eyebrow.sample{display:inline-block;background:var(--accent-soft);color:var(--ink);padding:5px 12px;border-radius:999px}
 .doc-title{font-family:var(--display);font-weight:600;font-size:1.5em;line-height:1.2;letter-spacing:-.01em;margin:0 0 .7em;text-wrap:balance}
+.scan-note{font-size:16px;color:var(--ink);background:var(--accent-soft);border-radius:12px;padding:10px 14px;margin:0 0 12px}
 .skipping{font-size:16px;color:var(--muted);border-block:1px solid var(--line);padding:10px 0}
 .skipping summary{cursor:pointer;font-weight:700;padding:4px 0}
 .chips{display:flex;flex-wrap:wrap;gap:8px;padding:8px 0 4px}
@@ -747,7 +748,7 @@ function buildDoc(title,blocks,st,o){
     if(CAPTION_RE.test(t)){ st.caps++; caps.push(t); if(b.region){ st.figs=(st.figs||0)+1; cur.paras.push({type:'figure',kind:b.kind,raw:t,region:b.region}); } continue; }
     if(looksTable(t)){ st.tables=(st.tables||0)+1; cur.paras.push({type:'table',raw:t,region:b.region}); continue; }
     if(!seenHead && (t.length<200 || (t.length<500 && /@|\b(?:University|Institute|Department|College|Laborator|School of|Inc\.)/.test(t)))){ st.front++; continue; }
-    if(!o.keepShort && t.length<40 && t.split(' ').length<6 && !/[.!?:]$/.test(t)){ st.labels++; continue; }
+    if(!o.keepShort && ((t.length<40 && t.split(' ').length<6 && !/[.!?:]$/.test(t)) || t.length<8)){ st.labels++; continue; }
     cur.paras.push({type:'p',raw:t});
   }
   push();
@@ -836,24 +837,58 @@ async function extractPdf(data,onProgress){
   })});
   return {pages,meta,pdf};
 }
-function pdfToDoc(pages,meta,fileName){
+function pdfToDoc(pages,meta,fileName,opt){
+  opt=opt||{};
   const st=newStats();
   // decide the layout for the whole paper: a single-column paper can have table pages that look two-column
-  const twoCol=pages.map(pg=>{
-    const mid=pg.w/2;let L=0,R=0,X=0;
-    for(const it of pg.items){ if(it.lig||it.str.trim().length<3) continue; if(it.x+it.w<mid+4) L++; else if(it.x>mid-4) R++; else X++; }
-    return L>8 && R>8 && X<(L+R)*0.25;
-  });
-  const mostlyTwo=twoCol.filter(Boolean).length>pages.length/2;
-  pages.forEach((pg,pi)=>{
-    const mid=pg.w/2;
-    const two=mostlyTwo&&twoCol[pi];
-    const cols={};
-    for(const it of pg.items){
-      let c='F';
-      if(two){ if(it.x+it.w<=mid+6) c='L'; else if(it.x>=mid-6) c='R'; }
-      (cols[c]=cols[c]||[]).push(it);
+  // find the empty vertical strip between two columns (scans and many PDFs aren't centred)
+  const findGutter=pg=>{
+    const its=pg.items.filter(it=>!it.lig&&it.str.trim().length>=2);
+    if(its.length<30) return null;
+    const W=Math.ceil(pg.w),cov=new Float32Array(W+2);
+    for(const it of its){const a=Math.max(0,Math.floor(it.x)),b=Math.min(W,Math.ceil(it.x+it.w));for(let x=a;x<=b;x++)cov[x]++}
+    const thr=Math.max(2,its.length*0.02);
+    let best=null,run=null;
+    for(let x=Math.floor(W*0.3);x<=Math.ceil(W*0.7);x++){
+      if(cov[x]<=thr){if(!run)run={a:x,b:x};else run.b=x}
+      else if(run){if(!best||run.b-run.a>best.b-best.a)best=run;run=null}
     }
+    if(run&&(!best||run.b-run.a>best.b-best.a))best=run;
+    if(!best||best.b-best.a<4) return null;
+    const split=(best.a+best.b)/2;
+    const L=its.filter(it=>it.x+it.w<=split).length,R=its.filter(it=>it.x>=split).length;
+    return L>=15&&R>=15?split:null;
+  };
+  const gutters=pages.map(findGutter);
+  const mostlyTwo=gutters.filter(g=>g!=null).length>pages.length/2;
+  pages.forEach((pg,pi)=>{
+    const split=mostlyTwo?gutters[pi]:null;
+    const two=split!=null;
+    for(const it of pg.items){
+      it.col='F';
+      if(two){
+        if(it.x<split-4&&it.x+it.w>split+4) it.col='F';
+        else it.col=(it.x+it.w/2)<split?'L':'R';
+      }
+    }
+    if(two){ // a line that runs across the gap with ordinary word spacing is one full-width line (a centred title)
+      const byY=pg.items.slice().sort((a,b)=>b.y-a.y);let grp=[];
+      const flushG=()=>{
+        if(grp.length>1){
+          const cs=new Set(grp.map(i=>i.col));
+          if(cs.size>1||cs.has('F')){ // words on both sides of the gap, or crossing it
+            const xs=grp.slice().sort((a,b)=>a.x-b.x),sz=Math.max(...grp.map(i=>i.size));
+            let maxGap=0;for(let k=1;k<xs.length;k++)maxGap=Math.max(maxGap,xs[k].x-(xs[k-1].x+xs[k-1].w));
+            if(maxGap<sz*2.2) grp.forEach(i=>i.col='F');
+          }
+        }
+        grp=[];
+      };
+      for(const it of byY){if(grp.length&&Math.abs(grp[0].y-it.y)>Math.max(grp[0].size,it.size)*0.4)flushG();grp.push(it)}
+      flushG();
+    }
+    const cols={};
+    for(const it of pg.items)(cols[it.col]=cols[it.col]||[]).push(it);
     const lines=[];
     for(const c in cols){
       const its=cols[c].sort((a,b)=>b.y-a.y||a.x-b.x);const groups=[];
@@ -872,14 +907,19 @@ function pdfToDoc(pages,meta,fileName){
           text+=it.str;end=it.x+it.w;minX=Math.min(minX,it.x);maxR=Math.max(maxR,it.x+it.w);
         }
         text=text.replace(/\s+/g,' ').trim();
-        if(text) lines.push({text,y:g.y,size:g.size,x:minX,right:maxR,col:c,page:pi,h:pg.h});
+        if(text) lines.push({text,y:g.y,size:g.size,x:minX,right:maxR,col:c,page:pi,h:pg.h,twoPage:two});
       }
     }
     const cr={};lines.forEach(l=>{cr[l.col]=Math.max(cr[l.col]||0,l.right)});lines.forEach(l=>l.colRight=cr[l.col]);
     const by=(a,b)=>b.y-a.y||a.x-b.x;
     if(two){
-      const colLines=lines.filter(l=>l.col!=='F');const top=colLines.length?Math.max(...colLines.map(l=>l.y)):Infinity;
-      pg.lines=[...lines.filter(l=>l.col==='F'&&l.y>top).sort(by),...lines.filter(l=>l.col==='L').sort(by),...lines.filter(l=>l.col==='R').sort(by),...lines.filter(l=>l.col==='F'&&l.y<=top).sort(by)];
+      // read column blocks band by band: full-width lines (titles, headings) separate the bands
+      const full=lines.filter(l=>l.col==='F').sort(by),colL=lines.filter(l=>l.col!=='F');
+      const out=[];let upper=Infinity;
+      const band=(hi,lo)=>{const inBand=colL.filter(l=>l.y<hi&&l.y>=lo);out.push(...inBand.filter(l=>l.col==='L').sort(by),...inBand.filter(l=>l.col==='R').sort(by))};
+      for(const f of full){band(upper,f.y);out.push(f);upper=f.y}
+      band(upper,-Infinity);
+      pg.lines=out;
     } else pg.lines=lines.sort(by);
   });
   // running headers, footers, page and line numbers
@@ -888,7 +928,9 @@ function pdfToDoc(pages,meta,fileName){
   const edge=l=>l.y>l.h*0.9||l.y<l.h*0.1;
   pages.forEach(pg=>{const seen=new Set();pg.lines.filter(edge).forEach(l=>{const k=key(l);if(!seen.has(k)){seen.add(k);cnt.set(k,(cnt.get(k)||0)+1)}})});
   const thresh=Math.max(3,Math.ceil(n*0.2));
-  pages.forEach(pg=>{pg.lines=pg.lines.filter(l=>{
+  const textPages=new Map();pages.forEach((pg,pi)=>pg.lines.forEach(l=>{const k=key(l);if(!textPages.has(k))textPages.set(k,new Set());textPages.get(k).add(pi)}));
+  pages.forEach((pg,pi)=>{pg.lines=pg.lines.filter(l=>{
+    if(n<3&&l.y>l.h*0.9&&l.text.length<60&&[...(textPages.get(key(l))||[])].some(q=>q!==pi)){st.headers++;return false}
     if(/^(?:page\s*)?\d{1,4}(?:\s*(?:of|\/)\s*\d{1,4})?$/i.test(l.text)){st.headers++;return false}
     if(n>=3 && edge(l) && cnt.get(key(l))>=thresh){st.headers++;return false}
     return true;
@@ -908,7 +950,12 @@ function pdfToDoc(pages,meta,fileName){
     const t=l.text,words=t.split(' ').length;
     if(t.length>150 || !/[A-Za-z]{2}/.test(t) || !/^[A-Z0-9]/.test(t) || CAPTION_RE.test(t)) return false;
     if(HEAD_RE.test(t)) return true;
-    if(l.size>=body*1.15 && words<=20 && !/[,;]$/.test(t)) return true;
+    if(opt.ocr){ // sizes measured from a scan are rough
+      if(l.size>=body*1.3 && words>=2 && words<=14 && !/[,;.]$/.test(t)) return true;
+      // on a two-column page, a short capitalised line running across both columns is a title or heading
+      if(l.twoPage && l.col==='F' && words>=2 && words<=10 && !/[.,;:]$/.test(t) && /^[A-Z]/.test(t) && !/^(?:[A-Z]\.\s*)+[A-Z]/.test(t) && (t.match(/\b[A-Z]/g)||[]).length>=Math.ceil(words/2)) return true;
+    }
+    else if(l.size>=body*1.15 && words<=20 && !/[,;]$/.test(t)) return true;
     if(NUMHEAD_RE.test(t) && words<=9 && !/[.,;]$/.test(t) && l.right<l.colRight-(l.colRight-l.x)*0.25) return true;
     return false;
   };
@@ -929,7 +976,7 @@ function pdfToDoc(pages,meta,fileName){
         if(gap>prev.size*1.75 || gap<0) np=true;
         else if(endsSentence(prev.text) && (ln.x>prev.x+ln.size*0.8 || prev.right<prev.colRight-ln.size*2.5)) np=true;
         if(Math.abs(ln.size-prev.size)>1.2) np=true;
-      } else if(endsSentence(prev.text) || !/^[a-z0-9(,;–-]/.test(t) || Math.abs(ln.size-prev.size)>1.2) np=true;
+      } else if(endsSentence(prev.text) || (!/^[a-z0-9(,;–-]/.test(t) && (CAPTION_RE.test(t) || !/\b(?:by|of|the|and|or|to|in|for|with|a|an|as|on|at|from|that|than|is|are|was|were)$/i.test(prev.text))) || Math.abs(ln.size-prev.size)>1.2) np=true;
     }
     if(np){ flush(); cur={type:'para',text:t,page:ln.page,lines:[ln]}; }
     else {cur.text=joinLines(cur.text,t);cur.lines.push(ln);}
@@ -1440,6 +1487,7 @@ function render(){
   const head=$('#docHead'),body=$('#docBody');head.innerHTML='';body.innerHTML='';
   head.append(el('p','eyebrow'+(meta.sample?' sample':''),meta.sample?'Sample paper, invented to show how this works':meta.label));
   head.append(el('h1','doc-title',doc.title));
+  if(doc.stats&&doc.stats.ocr) head.append(el('p','scan-note','This paper is a scan, so its text was recognized automatically and may contain a few mistakes. Pictures, equations and handwriting are shown but not read.'));
   const s=doc.stats;const chips=[];
   if(s.cite) chips.push(plural(s.cite,'citation'));
   if(s.fig) chips.push(plural(s.fig,'figure pointer'));
@@ -2307,6 +2355,85 @@ function startDictation(){
 }
 $('#padDictate').onclick=()=>dictating?stopDictation():startDictation();
 
+/* ---------- recognizing text in scanned PDFs (Tesseract, runs on this device) ---------- */
+let tessLoading=null;
+function loadTesseract(){
+  if(window.Tesseract) return Promise.resolve();
+  if(tessLoading) return tessLoading;
+  tessLoading=new Promise((res,rej)=>{
+    const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js';
+    sc.onload=()=>res();sc.onerror=()=>{tessLoading=null;rej(new Error('the recognizer didn’t download'))};
+    document.head.append(sc);
+  });
+  return tessLoading;
+}
+// The recognizer looks for its English data in its browser cache before downloading it, so put it there
+// from a text copy (plain text files can be hosted anywhere this app is, unlike .gz files)
+function seedTessCache(base){
+  return new Promise(resolve=>{
+    let req;try{req=indexedDB.open('keyval-store')}catch(e){resolve();return}
+    req.onupgradeneeded=()=>{try{req.result.createObjectStore('keyval')}catch(_){}};
+    req.onerror=()=>resolve();
+    req.onsuccess=async()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains('keyval')){db.close();resolve();return}
+      const has=await new Promise(r=>{try{const g=db.transaction('keyval').objectStore('keyval').get('./eng.traineddata');g.onsuccess=()=>r(!!g.result);g.onerror=()=>r(false)}catch(e){r(false)}});
+      if(has){db.close();resolve();return}
+      try{
+        const b64=await (await fetch(base+'eng.traineddata.gz.b64.txt')).text();
+        const bin=atob(b64.trim());const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+        await new Promise(r=>{const t=db.transaction('keyval','readwrite');t.objectStore('keyval').put(bytes,'./eng.traineddata');t.oncomplete=r;t.onerror=r;t.onabort=r});
+      }catch(e){}
+      db.close();resolve();
+    };
+  });
+}
+async function ocrPdf(pdf,onProgress){
+  await loadTesseract();
+  const base=new URL('ocr/',location.href).href;
+  await seedTessCache(base);
+  let curPage=1;
+  const worker=await Tesseract.createWorker('eng',1,{
+    workerPath:base+'worker.min.js',corePath:base,langPath:base,workerBlobURL:false,gzip:true,
+    logger:m=>{if(m.status==='recognizing text'&&m.progress)onProgress(curPage,pdf.numPages,Math.round(m.progress*100))},
+    errorHandler:()=>{}
+  });
+  const pages=[];
+  try{
+    for(let p=1;p<=pdf.numPages;p++){
+      curPage=p;onProgress(p,pdf.numPages,0);
+      const page=await pdf.getPage(p);const vp1=page.getViewport({scale:1});
+      const scale=Math.min(3.2,2600/Math.max(vp1.width,vp1.height));
+      const vp=page.getViewport({scale});
+      const cv=document.createElement('canvas');cv.width=Math.ceil(vp.width);cv.height=Math.ceil(vp.height);
+      const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);
+      await page.render({canvasContext:ctx,viewport:vp}).promise;
+      const {data}=await worker.recognize(cv,{},{blocks:true,text:false,hocr:false,tsv:false});
+      const items=[];
+      for(const blk of (data.blocks||[])) for(const par of (blk.paragraphs||[])) for(const line of (par.lines||[])){
+        if(line.confidence<50) continue; // handwriting, stamps and speckles
+        const ws=(line.words||[]).filter(w=>(w.text||'').trim().length>=3);
+        if(ws.length>=2&&ws.filter(w=>w.confidence<40).length/ws.length>=0.4) continue; // mostly unreadable (e.g. handwriting)
+        const lh=(line.rowAttributes&&line.rowAttributes.row_height)||(line.bbox.y1-line.bbox.y0);
+        const size=Math.max(5,lh/scale*0.78);
+        const bl=line.baseline&&isFinite(line.baseline.y0)?(line.baseline.y0+line.baseline.y1)/2:line.bbox.y1;
+        for(const w of (line.words||[])){
+          const t=(w.text||'').trim();
+          if(!t||w.confidence<15) continue;
+          if(t.length<=3&&w.confidence<50) continue; // specks read as letters
+          if(/^[|_¥:;.,'"`~=\[\]{}()\u2014\u2013-]+$/.test(t)) continue; // rules, bars and dots
+          const [x,y]=vp.convertToPdfPoint(w.bbox.x0,bl);
+          const [x1]=vp.convertToPdfPoint(w.bbox.x1,bl);
+          items.push({str:t,x,y,w:Math.max(1,x1-x),size,pua:null,lig:false});
+        }
+      }
+      pages.push({w:vp1.width,h:vp1.height,items});
+      page.cleanup();cv.width=cv.height=0;
+    }
+  }finally{try{await worker.terminate()}catch(_){}}
+  return pages;
+}
+
 /* ---------- enlarged pictures ---------- */
 let zoomReturn=null,zoomScale=1;
 function openZoom(src,label,kind){
@@ -2491,13 +2618,21 @@ async function openFile(f){
       setStatus('Opening '+f.name+'…',false,true);
       const buf=new Uint8Array(await f.arrayBuffer());
       const {pages,meta,pdf}=await extractPdf(buf,(p,n)=>setStatus('Reading page '+p+' of '+n+'…',false,true));
-      const doc=pdfToDoc(pages,meta,f.name);
+      let doc=pdfToDoc(pages,meta,f.name);
+      if(!doc&&pages.reduce((a,p)=>a+p.items.length,0)<40){
+        // a scanned PDF: recognize the text in the page images (once; the result is saved)
+        let scanned=null;
+        try{scanned=await ocrPdf(pdf,(p,n,pct)=>setStatus('This PDF is a scan, so the app is recognizing its text: page '+p+' of '+n+(pct?' ('+pct+'%)':'')+'… This only happens once.',false,true))}
+        catch(e){try{pdf.destroy()}catch(_){}setStatus('This PDF is a scanned image, and the text recognizer couldn’t start here ('+(e&&e.message||'unknown problem')+'). Try opening it in the app at mercury-mind.github.io/paper-out-loud.',true);return}
+        doc=scanned?pdfToDoc(scanned,meta,f.name,{ocr:true}):null;
+        if(doc) doc.stats.ocr=true;
+      }
       if(doc){
         try{await cropRegions(pdf,doc,(p,n)=>setStatus('Preparing equations, tables and figures ('+p+' of '+n+')…',false,true))}
         catch(e){doc.sections.forEach(s=>s.paras.forEach(p=>{delete p.region}))}
         try{pdf.destroy()}catch(_){}
       }
-      if(!doc){setStatus('This PDF looks like a scanned image, so there’s no text to read. Open it in Microsoft Word (it converts scans to text), save it as a PDF, and try that file.',true);return}
+      if(!doc){try{pdf.destroy()}catch(_){}setStatus('No readable text was found in this PDF, even after trying to recognize it. If it’s a photo or a very faint scan, a clearer copy may work.',true);return}
       await addPaper('f:'+f.name+':'+f.size,doc,{label:f.name+' · '+plural(pages.length,'page')});
     } else if(/\.(odt|odp)$/i.test(f.name)||/opendocument\.(text|presentation)/.test(f.type)){
       setStatus('Opening '+f.name+'…',false,true);
