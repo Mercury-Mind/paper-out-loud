@@ -2180,9 +2180,24 @@ const AI_KINDS={
   insights:{title:'Key insights',file:'key insights'},
   related:{title:'Related papers',file:'related papers'}
 };
-let sampleFn=null,aiReady=false,aiKind=null,aiCtl=null,aiBusy=false;
-if(window.claude&&typeof window.claude.use==='function'){
-  window.claude.use('sample').then(f=>{sampleFn=f;aiReady=!!f;renderAiPanel()}).catch(()=>{aiReady=false;renderAiPanel()});
+let sampleFn=null,aiReady=false,aiKind=null,aiCtl=null,aiBusy=false,aiWhy=null;
+function connectAi(){
+  if(!(window.claude&&typeof window.claude.use==='function')){aiWhy='nohost';return Promise.resolve(null)}
+  return window.claude.use('sample').then(f=>{sampleFn=f;aiReady=!!f;aiWhy=f?null:'noview';renderAiPanel();return f})
+    .catch(e=>{aiReady=false;aiWhy=(e&&e.code)||'noview';renderAiPanel();return null});
+}
+connectAi();
+// why AI can't be used right now, in words the viewer can act on
+function aiWhyText(){
+  if(aiWhy==='nohost') return 'The AI tools only work on the Claude link to Paper Out Loud (the address starting with claude.ai), not on this copy. Open the Claude link in a browser where you are signed in to Claude.';
+  if(aiWhy==='noview') return 'This page couldn’t connect to a Claude account. Open the Claude link in a web browser (Chrome, Edge or Safari) where you are signed in at claude.ai, then try again. If it still doesn’t work, your account or organization may not allow pages to use Claude.';
+  return aiErrorText({code:aiWhy});
+}
+function showAiProblem(kind,msg){
+  aiKind=kind;renderAiPanel();
+  $('#aiOut').hidden=false;$('#aiOutTitle').textContent=AI_KINDS[kind].title;$('#aiOutActions').hidden=true;$('#aiOutMeta').textContent='';
+  const body=$('#aiBody');body.innerHTML='';body.append(el('p','ai-thinking',msg));
+  setStatus(msg,true);
 }
 const STYLE='You are helping a PhD candidate with low vision who listens to research papers read aloud. Write in plain, clear English that sounds natural when read aloud: no LaTeX, no math symbols (say them in words), no tables, no emoji, no bold or italics. Use only the paper below. Do not invent facts, numbers, authors or citations; if something is not in the paper, say it is not stated.\nFormat: a line starting with "## " is a section heading; a line starting with "- " is a bullet point; everything else is a plain paragraph. No other formatting.';
 const PROMPTS={
@@ -2220,7 +2235,8 @@ function buildPrompt(kind){
 }
 function aiErrorText(e){
   const c=e&&e.code;
-  if(c==='not_granted'||c==='sampling_disabled'||c==='not_declared'||c==='capability_disabled'||c==='capability_removed') return 'AI isn’t available here. Claude access was not allowed for this page, or isn’t available on this account.';
+  if(c==='not_granted') return 'AI isn’t available because permission to use Claude wasn’t given for this page. Reload the page and choose Allow when Claude asks. If no question appears, your organization may not allow it.';
+  if(c==='sampling_disabled'||c==='not_declared'||c==='capability_disabled'||c==='capability_removed') return 'AI isn’t available for this Claude account, or in this view. Try opening the Claude link at claude.ai in a web browser while signed in.';
   if(c==='rate_limited') return 'You’ve reached a usage limit for now. Try again a little later.';
   if(c==='session_expired') return 'Your Claude session expired. Sign in to claude.ai again, then try once more.';
   if(c==='prompt_too_large') return 'This paper is too long to send in one go.';
@@ -2296,10 +2312,11 @@ function relatedAsText(data){
 function aiSaved(kind){return cur&&cur.state.ai&&cur.state.ai[kind]}
 function renderAiPanel(){
   const has=!!cur;
-  $('#aiUnavailable').hidden=aiReady;
+  $('#aiUnavailable').hidden=aiReady||!aiWhy;
+  if(aiWhy) $('#aiUnavailable').textContent=aiWhyText();
   $('#aiIntro').hidden=!aiReady;
   $$('.ai-act').forEach(b=>{
-    b.disabled=!aiReady||!has;
+    b.disabled=false; // always answer a click, even if only to explain why AI can't run
     b.setAttribute('aria-current',b.dataset.kind===aiKind?'true':'false');
     let tag=b.querySelector('.saved');
     if(aiSaved(b.dataset.kind)){if(!tag){tag=el('span','saved','Saved');b.append(tag)}}else if(tag)tag.remove();
@@ -2314,7 +2331,12 @@ function renderAiPanel(){
   if(saved){aiKind==='related'?renderRelated(saved.data):renderAiText(saved.text)}
 }
 async function runAi(kind,fresh){
-  if(!cur||!sampleFn) return;
+  if(!cur){setStatus('Open a paper first, then choose what you’d like the AI to do.',true);return}
+  if(!sampleFn&&!(aiSaved(kind)&&!fresh)){
+    showAiProblem(kind,'Connecting to Claude…');
+    await connectAi();
+    if(!sampleFn){showAiProblem(kind,aiWhyText());return}
+  }
   await loadReading();
   stopAiSpeech();
   aiKind=kind;
@@ -2352,6 +2374,7 @@ async function runAi(kind,fresh){
     if(aiKind!==kind) return;
     renderAiPanel();
     const body2=$('#aiBody');
+    if(e&&/^(?:not_granted|sampling_disabled|not_declared|capability_disabled|capability_removed)$/.test(e.code)){aiWhy=e.code;aiReady=false;sampleFn=null;renderAiPanel();showAiProblem(kind,aiErrorText(e));return}
     if(e&&e.code==='cancelled'){body2.innerHTML='';if(aiSaved(kind))renderAiPanel();else $('#aiOut').hidden=true;return}
     body2.innerHTML='';
     if(e&&e.text&&kind!=='related'&&e.code!=='refused') renderAiText(e.text);
