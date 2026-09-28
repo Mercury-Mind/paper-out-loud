@@ -614,9 +614,9 @@ const store={
 };
 
 /* ---------- patterns ---------- */
-const HEAD_WORDS='abstract|summary|introduction|background|related work|literature review|methods?|methodology|materials and methods|methods and materials|experimental setup|experimental design|experiments?|study design|results|findings|results and discussion|discussion|general discussion|conclusions?|concluding remarks|limitations|future work|implications|acknowledge?ments?|funding|author contributions|competing interests|conflicts? of interest|declaration of (?:competing )?interests?|data availability(?: statement)?|ethics statement|references(?: and notes)?|bibliography|works cited|literature cited|appendix(?:\\s+[a-z0-9]+)?(?:[.:]\\s*.{0,90})?|appendices|supplementary (?:material|materials|information)';
+const HEAD_WORDS='abstract|summary|introduction|background|related work|literature review|methods?|methodology|materials and methods|methods and materials|experimental setup|experimental design|experiments?|study design|results|findings|results and discussion|discussion|general discussion|conclusions?|concluding remarks|limitations|future work|implications|acknowledge?ments?|funding|author contributions|competing interests|conflicts? of interest|declaration of (?:competing )?interests?|data availability(?: statement)?|ethics statement|references(?: and notes)?|bibliograph[a-z]*|works cited|literature cited|appendix(?:\\s+[a-z0-9]+)?(?:[.:]\\s*.{0,90})?|appendices|supplementary (?:material|materials|information)';
 const HEAD_RE=new RegExp('^(?:(?:\\d+(?:\\.\\d+){0,3}|[IVX]+|[A-H])\\.?\\s+)?(?:'+HEAD_WORDS+')\\s*:?$','i');
-const REF_RE=/^(?:(?:\d+|[IVX]+)\.?\s+)?(?:references(?: and notes)?|bibliography|works cited|literature cited|cited literature)\s*:?$/i;
+const REF_RE=/^(?:(?:\d+|[IVX]+)\.?\s+)?(?:references(?: and notes)?|bibliograph[a-z]*|works cited|literature cited|cited literature)\s*:?$/i;
 const ADMIN_RE=/^(?:(?:\d+|[IVX]+)\.?\s+)?(?:acknowledge?ments?|funding(?: information)?|author contributions|competing interests|conflicts? of interest|declaration of (?:competing )?interests?|data availability(?: statement)?|ethics statement|financial disclosure)\s*:?$/i;
 const NUMHEAD_RE=/^(?:\d+(?:\.\d+){0,3}|[IVX]+|[A-H](?:\.\d+){1,3})\.?\s+[A-Z][A-Za-z0-9\-–:,'’&() ]{1,70}$/;
 const CAPTION_RE=/^(?:supplementary\s+)?(?:fig(?:ure)?s?\.?|table|tab\.|box|illustration|drawing|chart)\s*S?\d+[A-Za-z]?\s*[.:|—–-]/i;
@@ -723,7 +723,8 @@ function buildDoc(title,blocks,st,o){
   let cur={title:o.noFront?'Text':'Opening',speak:o.noFront?'Text':'Opening',paras:[],front:!o.noFront,skip:''};
   let seenHead=!!o.noFront;
   const push=()=>{ if(cur.paras.length || !cur.front) secs.push(cur); };
-  for(const b of blocks){
+  const AFFIL=/@|\b(?:University|Universit[äa]t|Institute|Department|College|Laborator|School of|Inc\.|Corresponding)/;
+  for(let bi=0;bi<blocks.length;bi++){const b=blocks[bi];
     if(b.type==='figure'&&b.img){ // a picture from a structured file (OpenDocument)
       st.figs=(st.figs||0)+1;if(b.caption){st.caps++;caps.push(b.caption)}
       cur.paras.push({type:'figure',kind:'figure',raw:b.caption||'Figure',img:b.img,wPts:b.wPts||0});continue;
@@ -736,7 +737,11 @@ function buildDoc(title,blocks,st,o){
     const t=b.text.replace(/\s+/g,' ').trim();
     if(!t) continue;
     if(b.type==='heading'){
-      if(!seenHead && !b.explicit && !HEAD_RE.test(t) && !NUMHEAD_RE.test(t)){ st.front++; continue; }
+      if(!seenHead && !b.explicit && !HEAD_RE.test(t) && !NUMHEAD_RE.test(t)){
+        // an unusual heading followed by real text starts a section (book chapters and handouts often have no "Introduction")
+        const nx=blocks[bi+1],nt=nx&&nx.type==='para'?nx.text:'';
+        if(!(nt.length>=300 && !AFFIL.test(t) && !/^(?:abstract|summary|keywords?)\b/i.test(nt))){ st.front++; continue; }
+      }
       seenHead=true; push();
       const afterRefs=secs.some(x=>x.skip==='refs')||cur.skip==='refs';
       cur={title:t,speak:t.replace(/^(?:(?:\d+(?:\.\d+)*|[IVX]+|[A-H](?:\.\d+)+)\.?\s+)/,'').replace(/:$/,''),paras:[],skip:REF_RE.test(t)?'refs':ADMIN_RE.test(t)?'admin':(afterRefs||/^appendi/i.test(t))?'appendix':''};
@@ -748,6 +753,7 @@ function buildDoc(title,blocks,st,o){
     if(CAPTION_RE.test(t)){ st.caps++; caps.push(t); if(b.region){ st.figs=(st.figs||0)+1; cur.paras.push({type:'figure',kind:b.kind,raw:t,region:b.region}); } continue; }
     if(looksTable(t)){ st.tables=(st.tables||0)+1; cur.paras.push({type:'table',raw:t,region:b.region}); continue; }
     if(!seenHead && (t.length<200 || (t.length<500 && /@|\b(?:University|Institute|Department|College|Laborator|School of|Inc\.)/.test(t)))){ st.front++; continue; }
+    if(!seenHead && t.length>=200 && !AFFIL.test(t.slice(0,200)) && (t.match(/\b(?:the|of|and|to|is|that|in|for|with|as|are|this|it|you|we)\b/gi)||[]).length>=6) seenHead=true; // after the first real paragraph, the front matter is over
     if(!o.keepShort && ((t.length<40 && t.split(' ').length<6 && !/[.!?:]$/.test(t)) || t.length<8)){ st.labels++; continue; }
     cur.paras.push({type:'p',raw:t});
   }
@@ -837,30 +843,81 @@ async function extractPdf(data,onProgress){
   })});
   return {pages,meta,pdf};
 }
+// The gap between two columns: an empty strip about a letter wide with text on both sides of it on many
+// lines. Counting lines (not how much text covers each spot) means a full-width title, abstract or list
+// above the columns doesn't hide the gap, and ordinary word spaces are too narrow and scattered to fake one.
+function findSplit(items,x0,x1){
+  const its=items.filter(it=>it.x+it.w/2>=x0&&it.x+it.w/2<x1);
+  if(its.length<30) return null;
+  const sizes=its.map(it=>it.size).sort((a,b)=>a-b),sz=sizes[sizes.length>>1]||10,g=Math.max(3,sz*0.9);
+  const rows=[];
+  for(const it of its.slice().sort((a,b)=>b.y-a.y)){const r=rows[rows.length-1];if(r&&Math.abs(r.y-it.y)<Math.max(r.size,it.size)*0.5)r.items.push(it);else rows.push({y:it.y,size:it.size,items:[it]})}
+  if(rows.length<8) return null;
+  const span=x1-x0,a=Math.floor(x0+span*0.3),b=Math.ceil(x0+span*0.7-g),score=[];
+  for(let x=a;x<=b;x++){
+    let n=0;
+    for(const r of rows){
+      let l=false,rt=false,hit=false;
+      for(const it of r.items){const e=it.x+it.w;if(e>x&&it.x<x+g){hit=true;break}if(e<=x)l=true;else rt=true}
+      if(!hit&&l&&rt)n++;
+    }
+    score.push(n);
+  }
+  const best=Math.max(0,...score);
+  if(best<Math.max(6,rows.length*0.3)) return null;
+  let br=null,run=null;
+  score.forEach((n,k)=>{if(n>=best*0.85){if(!run)run={a:k,b:k};else run.b=k}else if(run){if(!br||run.b-run.a>br.b-br.a)br=run;run=null}});
+  if(run&&(!br||run.b-run.a>br.b-br.a))br=run;
+  const split=a+(br.a+br.b)/2+g/2;
+  return its.filter(it=>it.x+it.w<=split).length>=15&&its.filter(it=>it.x>=split).length>=15?split:null;
+}
 function pdfToDoc(pages,meta,fileName,opt){
   opt=opt||{};
   const st=newStats();
+  if(opt.ocr) pages.forEach(pg=>{pg.items=pg.items.filter(it=>{const t=it.str; // pen marks read as "AAA" or "N\A"
+    return !(/[\\<>^~]/.test(t)||(/^([A-Za-z])\1+[.,;:]?$/.test(t)&&!/^[IVXivx]+$/.test(t)))});
+    // short fragments entirely out in the margins are pen notes, not text
+    // a stray one- or two-character mark far from any word on its line
+    pg.items=pg.items.filter(it=>{
+      if(it.str.length>2) return true;
+      const near=pg.items.some(o=>o!==it&&Math.abs(o.y-it.y)<it.size*0.6&&Math.max(o.x-(it.x+it.w),it.x-(o.x+o.w))<it.size*3);
+      return near||pg.items.every(o=>o===it||Math.abs(o.y-it.y)>=it.size*0.6); // alone on its line (a page number) is fine
+    });
+    if(pg.items.length<40) return;
+    const W=Math.ceil(pg.w),cov=new Float32Array(W+2),thr=Math.max(3,pg.items.length*0.02);
+    for(const it of pg.items)for(let x=Math.max(0,Math.floor(it.x));x<=Math.min(W,Math.ceil(it.x+it.w));x++)cov[x]++;
+    let lo=0,hi=W;while(lo<W&&cov[lo]<thr)lo++;while(hi>0&&cov[hi]<thr)hi--;
+    if(hi-lo<W*0.3) return;
+    pg.items=pg.items.filter(it=>!((it.x+it.w<lo-3||it.x>hi+3)&&it.str.replace(/[^A-Za-z0-9]/g,'').length<=4));
+  });
+  // a scanned book spread (two pages side by side on one landscape sheet) becomes two pages
+  pages=[].concat(...pages.map((pg,pi)=>{
+    const base={...pg,src:pi,dx:0};
+    if(!(pg.w>pg.h*1.15)||pg.items.length<40) return [base];
+    const its=pg.items.filter(it=>it.str.trim().length>=2),W=Math.ceil(pg.w),cov=new Float32Array(W+2);
+    for(const it of its)for(let x=Math.max(0,Math.floor(it.x));x<=Math.min(W,Math.ceil(it.x+it.w));x++)cov[x]++;
+    let best=null,run=null;
+    for(let x=Math.floor(W*0.4);x<=Math.ceil(W*0.6);x++){if(cov[x]===0){if(!run)run={a:x,b:x};else run.b=x}else if(run){if(!best||run.b-run.a>best.b-best.a)best=run;run=null}}
+    if(run&&(!best||run.b-run.a>best.b-best.a))best=run;
+    if(!best||best.b-best.a<W*0.015) return [base];
+    const s=(best.a+best.b)/2,L=pg.items.filter(it=>it.x+it.w/2<s),R=pg.items.filter(it=>it.x+it.w/2>=s);
+    if(L.length<20||R.length<20) return [base];
+    return [{w:s,h:pg.h,items:L,src:pi,dx:0,disp:pg.disp},{w:pg.w-s,h:pg.h,items:R.map(it=>({...it,x:it.x-s})),src:pi,dx:s,disp:pg.disp}];
+  }));
   // decide the layout for the whole paper: a single-column paper can have table pages that look two-column
   // find the empty vertical strip between two columns (scans and many PDFs aren't centred)
-  const findGutter=pg=>{
-    const its=pg.items.filter(it=>!it.lig&&it.str.trim().length>=2);
-    if(its.length<30) return null;
-    const W=Math.ceil(pg.w),cov=new Float32Array(W+2);
-    for(const it of its){const a=Math.max(0,Math.floor(it.x)),b=Math.min(W,Math.ceil(it.x+it.w));for(let x=a;x<=b;x++)cov[x]++}
-    const thr=Math.max(2,its.length*0.02);
-    let best=null,run=null;
-    for(let x=Math.floor(W*0.3);x<=Math.ceil(W*0.7);x++){
-      if(cov[x]<=thr){if(!run)run={a:x,b:x};else run.b=x}
-      else if(run){if(!best||run.b-run.a>best.b-best.a)best=run;run=null}
-    }
-    if(run&&(!best||run.b-run.a>best.b-best.a))best=run;
-    if(!best||best.b-best.a<4) return null;
-    const split=(best.a+best.b)/2;
-    const L=its.filter(it=>it.x+it.w<=split).length,R=its.filter(it=>it.x>=split).length;
-    return L>=15&&R>=15?split:null;
-  };
+  const findGutter=pg=>findSplit(pg.items.filter(it=>!it.lig&&it.str.trim()),0,pg.w);
   const gutters=pages.map(findGutter);
-  const mostlyTwo=gutters.filter(g=>g!=null).length>pages.length/2;
+  // pages with little text (a short last page, a figure page) don't get a vote
+  const found=gutters.filter(g=>g!=null).sort((a,b)=>a-b),mid=found[found.length>>1];
+  const voters=pages.filter((pg,pi)=>{
+    const its=pg.items.filter(it=>!it.lig&&it.str.trim().length>=2);
+    if(its.length<30) return false;
+    // text only on one side of the other pages' column gap (a half-empty last page) fits either layout
+    if(gutters[pi]==null&&mid!=null){const len=a=>a.reduce((n,it)=>n+it.str.length,0),all=len(its),side=len(its.filter(it=>it.x+it.w<=mid+4));if(side>=all*0.9||side<=all*0.1) return false}
+    return true;
+  }).length;
+  const mostlyTwo=gutters.filter(g=>g!=null).length>Math.max(1,voters)/2;
   pages.forEach((pg,pi)=>{
     const split=mostlyTwo?gutters[pi]:null;
     const two=split!=null;
@@ -877,9 +934,11 @@ function pdfToDoc(pages,meta,fileName,opt){
         if(grp.length>1){
           const cs=new Set(grp.map(i=>i.col));
           if(cs.size>1||cs.has('F')){ // words on both sides of the gap, or crossing it
-            const xs=grp.slice().sort((a,b)=>a.x-b.x),sz=Math.max(...grp.map(i=>i.size));
-            let maxGap=0;for(let k=1;k<xs.length;k++)maxGap=Math.max(maxGap,xs[k].x-(xs[k-1].x+xs[k-1].w));
-            if(maxGap<sz*2.2) grp.forEach(i=>i.col='F');
+            // only the space at the gap matters: ordinary word spacing there means one line; a column gap is wider
+            const sz=grp.map(i=>i.size).sort((a,b)=>a-b)[grp.length>>1];
+            const lEnd=Math.max(-Infinity,...grp.filter(i=>i.col==='L').map(i=>i.x+i.w)),rStart=Math.min(Infinity,...grp.filter(i=>i.col==='R').map(i=>i.x));
+            const gapAt=cs.has('F')?0:rStart-lEnd;
+            if(gapAt<sz*1.1) grp.forEach(i=>i.col='F');
           }
         }
         grp=[];
@@ -908,6 +967,7 @@ function pdfToDoc(pages,meta,fileName,opt){
         }
         text=text.replace(/\s+/g,' ').trim();
         if(text) lines.push({text,y:g.y,size:g.size,x:minX,right:maxR,col:c,page:pi,h:pg.h,twoPage:two});
+        if(typeof __dbg!=="undefined"&&text)__dbg.push([pi,c,g.y.toFixed(0),minX.toFixed(0),g.size.toFixed(1),text.slice(0,70)].join(" "));
       }
     }
     const cr={};lines.forEach(l=>{cr[l.col]=Math.max(cr[l.col]||0,l.right)});lines.forEach(l=>l.colRight=cr[l.col]);
@@ -926,11 +986,19 @@ function pdfToDoc(pages,meta,fileName,opt){
   const n=pages.length;const cnt=new Map();
   const key=l=>l.text.toLowerCase().replace(/\d+/g,'#').replace(/\s+/g,' ').trim();
   const edge=l=>l.y>l.h*0.9||l.y<l.h*0.1;
+  const PAGENO=/^(?:page\s*)?\d{1,4}(?:\s*(?:of|\/)\s*\d{1,4})?$/i;
+  // on a scan the page may sit anywhere on the sheet, so measure the header zone from the text itself
+  const ext=pages.map(pg=>{const ys=pg.lines.map(l=>l.y);return [Math.min(...ys),Math.max(...ys)]});
+  const edgeOf=(l,pi)=>{if(!opt.ocr)return edge(l);const [lo,hi]=ext[pi],r=hi-lo;return r>0&&(l.y>hi-r*0.08||l.y<lo+r*0.08)};
+  const outer=(l,pg)=>edgeOf(l,pages.indexOf(pg))&&(l.y>l.h*0.5?pg.lines.every(m=>m.y<=l.y+1||PAGENO.test(m.text)):pg.lines.every(m=>m.y>=l.y-1||PAGENO.test(m.text))); // the very first or last line
+  const head2=l=>(l.y>l.h*0.5?'t:':'b:')+(l.text.toLowerCase().replace(/[^a-z ]/g,'').trim().split(/\s+/)[0]||'');
   pages.forEach(pg=>{const seen=new Set();pg.lines.filter(edge).forEach(l=>{const k=key(l);if(!seen.has(k)){seen.add(k);cnt.set(k,(cnt.get(k)||0)+1)}})});
   const thresh=Math.max(3,Math.ceil(n*0.2));
   const textPages=new Map();pages.forEach((pg,pi)=>pg.lines.forEach(l=>{const k=key(l);if(!textPages.has(k))textPages.set(k,new Set());textPages.get(k).add(pi)}));
   pages.forEach((pg,pi)=>{pg.lines=pg.lines.filter(l=>{
-    if(n<3&&l.y>l.h*0.9&&l.text.length<60&&[...(textPages.get(key(l))||[])].some(q=>q!==pi)){st.headers++;return false}
+    if(n<3&&l.y>l.h*0.9&&l.text.length<60&&outer(l,pg)&&[...(textPages.get(key(l))||[])].some(q=>q!==pi)){st.headers++;return false}
+    // on a scan, marks in the margin can get read into the header, so compare only its first words
+    if(opt.ocr&&outer(l,pg)&&l.text.length<80){const hk=head2(l);if(hk.length>=7&&pages.some((q,qi)=>qi!==pi&&q.lines.some(m=>outer(m,q)&&head2(m)===hk&&m.size>=l.size*0.8))){st.headers++;return false}}
     if(/^(?:page\s*)?\d{1,4}(?:\s*(?:of|\/)\s*\d{1,4})?$/i.test(l.text)){st.headers++;return false}
     if(n>=3 && edge(l) && cnt.get(key(l))>=thresh){st.headers++;return false}
     return true;
@@ -946,11 +1014,18 @@ function pdfToDoc(pages,meta,fileName,opt){
   const totalChars=all.reduce((a,l)=>a+l.text.length,0);
   if(totalChars<200) return null;
 
+  for(let i=0;i+1<all.length;i++){const a=all[i],b=all[i+1];if(a.page===b.page&&a.col===b.col&&a.y-b.y>0&&a.y-b.y<Math.max(a.size,b.size)*2.2&&/^[a-z]/.test(b.text)&&!/[.:!?]$/.test(a.text))a.flows=true}
+  for(let i=0;i<all.length;i++){const a=all[i-1],l=all[i],b=all[i+1];
+    const endsBefore=!a||a.page!==l.page||a.col!==l.col||/[.!?:]["”’)]?$/.test(a.text);
+    l.between=endsBefore&&!!b&&b.page===l.page&&b.col===l.col&&/^[A-Z]/.test(b.text)&&l.y-b.y<Math.max(l.size,b.size)*3}
   const looksHeading=l=>{
     const t=l.text,words=t.split(' ').length;
     if(t.length>150 || !/[A-Za-z]{2}/.test(t) || !/^[A-Z0-9]/.test(t) || CAPTION_RE.test(t)) return false;
     if(HEAD_RE.test(t)) return true;
     if(opt.ocr){ // sizes measured from a scan are rough
+      if(l.flows && l.right>=l.colRight-l.size*3) return false; // a full line running on into lowercase text is prose
+      // a short title-case line between the end of one paragraph and the start of the next
+      if(l.between && (words>=2||/^[A-Z][a-z]{3,}$/.test(t)) && words<=8 && !/\d/.test(t) && !/[.,;:]$/.test(t) && l.right<l.colRight-(l.colRight-l.x)*0.3 && !/^(?:[A-Z]\.\s*)+[A-Z]/.test(t) && (t.match(/\b[A-Z]/g)||[]).length>=Math.ceil(words/2)) return true;
       if(l.size>=body*1.3 && words>=2 && words<=14 && !/[,;.]$/.test(t)) return true;
       // on a two-column page, a short capitalised line running across both columns is a title or heading
       if(l.twoPage && l.col==='F' && words>=2 && words<=10 && !/[.,;:]$/.test(t) && /^[A-Z]/.test(t) && !/^(?:[A-Z]\.\s*)+[A-Z]/.test(t) && (t.match(/\b[A-Z]/g)||[]).length>=Math.ceil(words/2)) return true;
@@ -962,10 +1037,15 @@ function pdfToDoc(pages,meta,fileName,opt){
   const endsSentence=t=>/[.!?:]["”’)]?$/.test(t);
   const blocks=[];let cur=null,prev=null;
   const flush=()=>{if(cur){blocks.push(cur);cur=null}};
+  // sizes read from a scan are rough, so judge paragraph gaps by the paper's usual line spacing instead
+  let lead=0;
+  if(opt.ocr){const gs=[];for(let i=1;i<all.length;i++){const a=all[i-1],b=all[i];if(a.page===b.page&&a.col===b.col){const g=a.y-b.y;if(g>0&&g<Math.max(a.size,b.size)*3)gs.push(g)}}
+    gs.sort((x,y)=>x-y);lead=gs.length>=8?gs[Math.floor(gs.length*0.4)]:0}
+  const sizeJump=(a,b)=>opt.ocr?Math.abs(a.size-b.size)>Math.max(a.size,b.size)*0.3:Math.abs(a.size-b.size)>1.2;
   for(const ln of all){
     const t=ln.text;
     if(looksHeading(ln)){
-      if(cur && cur.type==='heading' && !HEAD_RE.test(cur.text) && prev && prev.page===ln.page && Math.abs(prev.size-ln.size)<0.6 && (prev.y-ln.y)<ln.size*2){ cur.text+=' '+t; cur.lines.push(ln); prev=ln; continue; }
+      if(cur && cur.type==='heading' && !HEAD_RE.test(cur.text) && prev && prev.page===ln.page && Math.abs(prev.size-ln.size)<(opt.ocr?Math.max(0.6,ln.size*0.15):0.6) && (prev.y-ln.y)<ln.size*2){ cur.text+=' '+t; cur.lines.push(ln); prev=ln; continue; }
       flush(); cur={type:'heading',text:t,size:ln.size,page:ln.page,lines:[ln]}; prev=ln; continue;
     }
     if(looksEquation(t)){ flush(); const lb=blocks[blocks.length-1]; if(lb&&lb.type==='eq'&&lb.page===ln.page){lb.text+='  '+t;lb.lines.push(ln)} else blocks.push({type:'eq',text:t,page:ln.page,lines:[ln]}); prev=ln; continue; }
@@ -973,10 +1053,13 @@ function pdfToDoc(pages,meta,fileName,opt){
     if(!np){
       if(prev.page===ln.page && prev.col===ln.col){
         const gap=prev.y-ln.y;
-        if(gap>prev.size*1.75 || gap<0) np=true;
+        if((lead?gap>lead*1.45:gap>prev.size*1.75) || gap<0) np=true;
         else if(endsSentence(prev.text) && (ln.x>prev.x+ln.size*0.8 || prev.right<prev.colRight-ln.size*2.5)) np=true;
-        if(Math.abs(ln.size-prev.size)>1.2) np=true;
-      } else if(endsSentence(prev.text) || (!/^[a-z0-9(,;–-]/.test(t) && (CAPTION_RE.test(t) || !/\b(?:by|of|the|and|or|to|in|for|with|a|an|as|on|at|from|that|than|is|are|was|were)$/i.test(prev.text))) || Math.abs(ln.size-prev.size)>1.2) np=true;
+        if(sizeJump(ln,prev)) np=true;
+      } else if(endsSentence(prev.text) || (!/^[a-z0-9(,;–-]/.test(t) && (CAPTION_RE.test(t) || !/\b(?:by|of|the|and|or|to|in|for|with|a|an|as|on|at|from|that|than|is|are|was|were)$/i.test(prev.text))) || sizeJump(ln,prev)) np=true;
+      // a scanned table under its caption: the rows are indented or full of numbers, and aren't part of the caption
+      if(opt.ocr && !np && CAPTION_RE.test(cur.text) && (ln.x>prev.x+ln.size*2 || (t.match(/(?:^|\s)[\d.,%()$-]+(?=\s|$)/g)||[]).length>=2)) np=true;
+      if(opt.ocr && np && /[a-z]-$/.test(prev.text) && /^[a-z]/.test(t) && !endsSentence(prev.text)) np=false; // a word split over two lines
     }
     if(np){ flush(); cur={type:'para',text:t,page:ln.page,lines:[ln]}; }
     else {cur.text=joinLines(cur.text,t);cur.lines.push(ln);}
@@ -1019,7 +1102,7 @@ function pdfToDoc(pages,meta,fileName,opt){
     }
     if(T-B<body*1.2) return null;
     const [x0,x1]=bounds(pg,col);
-    return {page:pi,x0,x1,top:T,bot:B,col};
+    return {page:pg.src!=null?pg.src:pi,x0:x0+(pg.dx||0),x1:x1+(pg.dx||0),top:T,bot:B,col,disp:!!pg.disp};
   }
   const floats=[];
   for(const b of blocks){
@@ -1035,6 +1118,16 @@ function pdfToDoc(pages,meta,fileName,opt){
     if(b.lines.every(inFloat)){b.drop=true;continue}
     if(b.type==='eq'){ if(b.text.replace(/\s/g,'').length<5){b.drop=true;continue} b.region=regionFor(b.lines,'eq'); }
     else if(b.type==='para'&&looksTable(b.text)) b.region=regionFor(b.lines,'eq');
+  }
+  if(typeof __dbg!=="undefined")__dbg.push("BLOCKS",...blocks.slice(0,6).map(b=>b.type+" p"+b.page+" s"+(b.size||0).toFixed(1)+" "+b.text.slice(0,50)));
+  // a table of contents: several numbered headings in a row with nothing between them
+  for(let i=0;i<blocks.length;){
+    const num=b=>b&&b.type==='heading'&&/^(?:\d+(?:\.\d+)*|[IVX]+)\.?\s/.test(b.text);
+    let j=i,h=0;
+    if(num(blocks[i]))while(j<blocks.length&&(num(blocks[j])||(blocks[j].type==='para'&&blocks[j].text.length<60&&num(blocks[j+1])))){if(num(blocks[j]))h++;j++}
+    if(h>=4){const prev=blocks[i-1];if(prev&&prev.type==='heading'&&/^(?:table of )?contents$/i.test(prev.text.trim())){i--}
+      const n=j-i;blocks.splice(i,n);st.toc=(st.toc||0)+n;continue}
+    i=Math.max(j,i+1);
   }
   // title: largest heading on page 1 before the first standard section heading
   let title='',ti=-1,best=0;
@@ -1072,7 +1165,7 @@ async function cropRegions(pdf,doc,onProgress){
     await page.render({canvasContext:ctx,viewport:vp}).promise;
     for(const p of ps){
       const r=p.region;delete p.region;
-      const [ax,ay]=vp.convertToViewportPoint(r.x0,r.top),[bx,by]=vp.convertToViewportPoint(r.x1,r.bot);
+      const [ax,ay]=r.disp?[r.x0*scale,vp.height-r.top*scale]:vp.convertToViewportPoint(r.x0,r.top),[bx,by]=r.disp?[r.x1*scale,vp.height-r.bot*scale]:vp.convertToViewportPoint(r.x1,r.bot);
       const x=Math.max(0,Math.floor(Math.min(ax,bx))),y=Math.max(0,Math.floor(Math.min(ay,by)));
       const w=Math.min(cv.width-x,Math.ceil(Math.abs(bx-ax))),h=Math.min(cv.height-y,Math.ceil(Math.abs(by-ay)));
       if(w<8||h<8) continue;
@@ -2388,6 +2481,99 @@ function seedTessCache(base){
     };
   });
 }
+// words Tesseract is reasonably sure of, in canvas pixels
+function ocrWords(data,lineBase){
+  const out=[];let li=lineBase||0;
+  for(const blk of (data.blocks||[])) for(const par of (blk.paragraphs||[])) for(const line of (par.lines||[])){
+    li++;
+    if(line.confidence<50) continue; // handwriting, stamps and speckles
+    const ws=(line.words||[]).filter(w=>(w.text||'').trim().length>=3);
+    if(ws.length>=2&&ws.filter(w=>w.confidence<40).length/ws.length>=0.4) continue; // mostly unreadable (e.g. handwriting)
+    const lh=(line.rowAttributes&&line.rowAttributes.row_height)||(line.bbox.y1-line.bbox.y0);
+    const bl=line.baseline&&isFinite(line.baseline.y0)?(line.baseline.y0+line.baseline.y1)/2:line.bbox.y1;
+    for(const w of (line.words||[])){
+      const t=(w.text||'').trim();
+      if(!t||w.confidence<15) continue;
+      if(t.length<=3&&w.confidence<50) continue; // specks read as letters
+      if(/^[|_¥:;.,'"`~=\[\]{}()\u2014\u2013-]+$/.test(t)) continue; // rules, bars and dots
+      out.push({t,x0:w.bbox.x0,x1:w.bbox.x1,y0:w.bbox.y0,y1:w.bbox.y1,bl,lh,line:li});
+    }
+  }
+  return out;
+}
+// the empty vertical strip between two columns, in pixels (null if there isn't one)
+function ocrGutter(words,x0,x1){
+  const its=words.filter(w=>w.t.length>=2&&(w.x0+w.x1)/2>=x0&&(w.x0+w.x1)/2<x1);if(its.length<30) return null;
+  const W=Math.ceil(x1),cov=new Float32Array(W+2);for(const w of its)for(let x=Math.max(0,Math.floor(w.x0));x<=Math.min(W,Math.ceil(w.x1));x++)cov[x]++;
+  const thr=Math.max(2,its.length*0.02),span=x1-x0;let best=null,run=null;
+  for(let x=Math.floor(x0+span*0.3);x<=Math.ceil(x0+span*0.7);x++){
+    if(cov[x]<=thr){if(!run)run={a:x,b:x};else run.b=x}else if(run){if(!best||run.b-run.a>best.b-best.a)best=run;run=null}
+  }
+  if(run&&(!best||run.b-run.a>best.b-best.a))best=run;
+  if(!best||best.b-best.a<span*0.008) return null;
+  const split=(best.a+best.b)/2;
+  return its.filter(w=>w.x1<=split).length>=15&&its.filter(w=>w.x0>=split).length>=15?split:null;
+}
+// the columns of a page as [left,right] pixel ranges; a book spread can have two pages of two columns
+function ocrColumns(words,x0,x1,depth){
+  const s=depth>0?ocrGutter(words,x0,x1):null;
+  return s==null?[[x0,x1]]:ocrColumns(words,x0,s,depth-1).concat(ocrColumns(words,s,x1,depth-1));
+}
+// even out shadows, yellowed paper and uneven lighting so the text stands out evenly across the page
+function flattenScan(cv){
+  const W=cv.width,H=cv.height,ctx=cv.getContext('2d',{willReadFrequently:true}),img=ctx.getImageData(0,0,W,H),d=img.data;
+  const B=Math.max(16,Math.round(Math.max(W,H)/150)),bw=Math.ceil(W/B),bh=Math.ceil(H/B);
+  const g=new Uint8ClampedArray(W*H);
+  for(let i=0,j=0;i<g.length;i++,j+=4) g[i]=(d[j]*77+d[j+1]*150+d[j+2]*29)>>8;
+  let bg=new Float32Array(bw*bh);
+  for(let by=0;by<bh;by++)for(let bx=0;bx<bw;bx++){ // the paper is the brightest thing in each block
+    let m=0;const y1=Math.min(H,(by+1)*B),x1=Math.min(W,(bx+1)*B);
+    for(let y=by*B;y<y1;y+=2)for(let x=bx*B;x<x1;x+=2){const v=g[y*W+x];if(v>m)m=v}
+    bg[by*bw+bx]=m;
+  }
+  for(let pass=0;pass<2;pass++){ // spread the paper level over blocks that are all text or figure
+    const n=new Float32Array(bg.length);
+    for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){let s=0,c=0,mx=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const yy=y+dy,xx=x+dx;if(yy<0||xx<0||yy>=bh||xx>=bw)continue;const v=bg[yy*bw+xx];s+=v;c++;if(v>mx)mx=v}
+      n[y*bw+x]=Math.max(bg[y*bw+x],0.5*mx+0.5*s/c)}
+    bg=n;
+  }
+  for(let y=0;y<H;y++){
+    const fy=Math.min(bh-1.001,Math.max(0,y/B-0.5)),y0=Math.floor(fy),ty=fy-y0;
+    for(let x=0;x<W;x++){
+      const fx=Math.min(bw-1.001,Math.max(0,x/B-0.5)),x0=Math.floor(fx),tx=fx-x0,k=y0*bw+x0;
+      const b=(bg[k]*(1-tx)+bg[k+1]*tx)*(1-ty)+(bg[k+bw]*(1-tx)+bg[k+bw+1]*tx)*ty;
+      const v=Math.min(255,g[y*W+x]*255/Math.max(40,b)),j=(y*W+x)*4;
+      d[j]=d[j+1]=d[j+2]=v;
+    }
+  }
+  ctx.putImageData(img,0,0);
+}
+async function ocrCanvas(worker,cv){
+  const opts={rotateAuto:true},out={blocks:true,text:false,hocr:false,tsv:false};
+  const {data}=await worker.recognize(cv,opts,out);
+  const words=ocrWords(data);
+  const cols=ocrColumns(words,0,cv.width,2);
+  if(cols.length<2) return words;
+  // Tesseract sometimes runs a line of one column into the next when their lines don't sit at the same
+  // height, and then misreads or drops words. If that happened, read each column on its own.
+  const colOf=x=>cols.findIndex(c=>x>=c[0]&&x<c[1]);
+  const byLine=new Map();for(const w of words){if(!byLine.has(w.line))byLine.set(w.line,[]);byLine.get(w.line).push(w)}
+  const wide=[];let merged=0;
+  for(const ws of byLine.values()){
+    if(ws.some(w=>cols.some((c,i)=>i>0&&w.x0<c[0]-2&&w.x1>c[0]+2))){wide.push(ws);continue} // a word right across a gap (a centred heading)
+    if(new Set(ws.map(w=>colOf((w.x0+w.x1)/2))).size<2) continue;
+    let gap=Infinity;
+    for(let i=1;i<cols.length;i++){const L=ws.filter(w=>(w.x0+w.x1)/2<cols[i][0]),R=ws.filter(w=>(w.x0+w.x1)/2>=cols[i][0]);if(L.length&&R.length)gap=Math.min(gap,Math.min(...R.map(w=>w.x0))-Math.max(...L.map(w=>w.x1)))}
+    if(gap<ws[0].lh*0.9) wide.push(ws); else merged++;
+  }
+  if(merged<2) return words;
+  const H=cv.height;let parts=[];
+  for(const [a,b] of cols){const l=Math.round(a),r=Math.round(b);parts=parts.concat(ocrWords((await worker.recognize(cv,{...opts,rectangle:{left:l,top:0,width:r-l,height:H}},out)).data,1e5*(parts.length+1)))}
+  // keep full-width lines (titles running across a gap) from the first reading
+  const boxes=wide.map(ws=>({x0:Math.min(...ws.map(w=>w.x0)),x1:Math.max(...ws.map(w=>w.x1)),y0:Math.min(...ws.map(w=>w.y0)),y1:Math.max(...ws.map(w=>w.y1))}));
+  const inWide=w=>boxes.some(b=>w.x1>b.x0&&w.x0<b.x1&&(w.y0+w.y1)/2>b.y0&&(w.y0+w.y1)/2<b.y1);
+  return wide.flat().concat(parts.filter(w=>!inWide(w)));
+}
 async function ocrPdf(pdf,onProgress){
   await loadTesseract();
   const base=new URL('ocr/',location.href).href;
@@ -2403,31 +2589,21 @@ async function ocrPdf(pdf,onProgress){
     for(let p=1;p<=pdf.numPages;p++){
       curPage=p;onProgress(p,pdf.numPages,0);
       const page=await pdf.getPage(p);const vp1=page.getViewport({scale:1});
-      const scale=Math.min(3.2,2600/Math.max(vp1.width,vp1.height));
+      const scale=Math.min(4.5,(vp1.width>vp1.height*1.15?3600:2600)/Math.max(vp1.width,vp1.height)); // a landscape sheet may hold two book pages
       const vp=page.getViewport({scale});
       const cv=document.createElement('canvas');cv.width=Math.ceil(vp.width);cv.height=Math.ceil(vp.height);
       const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);
       await page.render({canvasContext:ctx,viewport:vp}).promise;
-      const {data}=await worker.recognize(cv,{},{blocks:true,text:false,hocr:false,tsv:false});
+      try{flattenScan(cv)}catch(_){}
+      const words=await ocrCanvas(worker,cv);
       const items=[];
-      for(const blk of (data.blocks||[])) for(const par of (blk.paragraphs||[])) for(const line of (par.lines||[])){
-        if(line.confidence<50) continue; // handwriting, stamps and speckles
-        const ws=(line.words||[]).filter(w=>(w.text||'').trim().length>=3);
-        if(ws.length>=2&&ws.filter(w=>w.confidence<40).length/ws.length>=0.4) continue; // mostly unreadable (e.g. handwriting)
-        const lh=(line.rowAttributes&&line.rowAttributes.row_height)||(line.bbox.y1-line.bbox.y0);
-        const size=Math.max(5,lh/scale*0.78);
-        const bl=line.baseline&&isFinite(line.baseline.y0)?(line.baseline.y0+line.baseline.y1)/2:line.bbox.y1;
-        for(const w of (line.words||[])){
-          const t=(w.text||'').trim();
-          if(!t||w.confidence<15) continue;
-          if(t.length<=3&&w.confidence<50) continue; // specks read as letters
-          if(/^[|_¥:;.,'"`~=\[\]{}()\u2014\u2013-]+$/.test(t)) continue; // rules, bars and dots
-          const [x,y]=vp.convertToPdfPoint(w.bbox.x0,bl);
-          const [x1]=vp.convertToPdfPoint(w.bbox.x1,bl);
-          items.push({str:t,x,y,w:Math.max(1,x1-x),size,pua:null,lig:false});
-        }
+      for(const w of words){
+        const size=Math.max(5,w.lh/scale*0.78);
+        // positions as the page is shown (a sideways-stored scan stays upright), with y measured up from the bottom
+        const x=w.x0/scale,y=vp1.height-w.bl/scale;
+        items.push({str:w.t,x,y,w:Math.max(1,(w.x1-w.x0)/scale),size,pua:null,lig:false});
       }
-      pages.push({w:vp1.width,h:vp1.height,items});
+      pages.push({w:vp1.width,h:vp1.height,items,disp:true});
       page.cleanup();cv.width=cv.height=0;
     }
   }finally{try{await worker.terminate()}catch(_){}}
