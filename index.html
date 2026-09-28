@@ -118,6 +118,8 @@ button,select,input,textarea{font:inherit;color:inherit}
 .hmenu span{font-size:14px;color:var(--muted)}
 .hmenu .fine{padding:4px 14px 8px;font-size:14px}
 .count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:14px;display:inline-grid;place-items:center;font-variant-numeric:tabular-nums}
+/* AI tools are switched off for now (see AI_ON); remove this line and set AI_ON=true to bring them back */
+#aiBtn,#aiDrawer{display:none!important}
 body[data-view="library"] #contentsBtn,body[data-view="library"] #notesBtn,body[data-view="library"] #aiBtn,body[data-view="library"] #padBtn,body[data-view="library"] .player{display:none}
 @media (min-width:1180px){#contentsBtn{display:none}}
 
@@ -407,7 +409,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
       <div class="menu-wrap">
         <button class="hbtn" id="backupMenuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="backupMenu"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/></svg>Backup</button>
         <div class="hmenu" id="backupMenu" role="menu" hidden>
-          <button role="menuitem" id="hmSave"><b>Save a backup</b><span>Papers, highlights, notes, AI results and settings, in one file</span></button>
+          <button role="menuitem" id="hmSave"><b>Save a backup</b><span>Papers, highlights, notes and settings, in one file</span></button>
           <button role="menuitem" id="hmRestore"><b>Restore from a backup</b><span>Bring everything back from a backup file</span></button>
           <p class="fine" id="hmInfo"></p>
         </div>
@@ -1852,7 +1854,7 @@ function renderNotes(){
     li.append(el('p','ntext ai-prev',prev.slice(0,260)+(prev.length>260?'…':'')));
     const row=el('div','row');const open=el('button','btn sm','Open');
     open.onclick=()=>{openDrawer('aiDrawer',$('#aiBtn'));aiKind=k;renderAiPanel()};
-    row.append(open);li.append(row);al.append(li);
+    if(AI_ON)row.append(open);li.append(row);al.append(li);
   }
   const list=$('#notesList');list.innerHTML='';
   for(const g of groups){
@@ -2186,7 +2188,8 @@ function connectAi(){
   return window.claude.use('sample').then(f=>{sampleFn=f;aiReady=!!f;aiWhy=f?null:'noview';renderAiPanel();return f})
     .catch(e=>{aiReady=false;aiWhy=(e&&e.code)||'noview';renderAiPanel();return null});
 }
-connectAi();
+var AI_ON=false; // AI tools hidden for now: they only work for the owner on the Claude link
+if(AI_ON) connectAi();
 // why AI can't be used right now, in words the viewer can act on
 function aiWhyText(){
   if(aiWhy==='nohost') return 'The AI tools only work on the Claude link to Paper Out Loud (the address starting with claude.ai), not on this copy. Open the Claude link in a browser where you are signed in to Claude.';
