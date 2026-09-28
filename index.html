@@ -123,6 +123,36 @@ button,select,input,textarea{font:inherit;color:inherit}
 body[data-view="library"] #contentsBtn,body[data-view="library"] #notesBtn,body[data-view="library"] #aiBtn,body[data-view="library"] #padBtn,body[data-view="library"] .player{display:none}
 @media (min-width:1180px){#contentsBtn{display:none}}
 
+.spd{font-size:18px;font-weight:800;color:var(--ink);line-height:24px;font-variant-numeric:tabular-nums}
+.spmenu{position:fixed;z-index:40;background:var(--sheet);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:8px;display:grid;gap:2px;min-width:150px}
+.spm-h{margin:4px 10px 6px;font-size:14px;font-weight:700;color:var(--muted)}
+.spm-o{border:0;background:transparent;border-radius:10px;padding:10px 14px;font-size:19px;font-weight:700;text-align:left;cursor:pointer;color:var(--ink);white-space:pre}
+.spm-o:hover,.spm-o:focus-visible{background:var(--chip)}
+.spm-o[aria-checked="true"]{background:var(--accent-soft)}
+.spm-o[aria-checked="true"]::before{content:"✓ "}
+.lib-welcome{font-size:19px;max-width:40em;margin:.2em 0 0;color:var(--muted);flex-basis:100%}
+.plan{margin:18px 0 6px;border:1.5px solid var(--line);border-radius:18px;padding:16px 18px;background:var(--bg)}
+.plan-h{font-size:21px;margin:0 0 12px}
+.plan-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.plan-o{display:grid;gap:3px;text-align:left;padding:14px 16px;border:1.5px solid var(--line);border-radius:14px;background:var(--sheet);cursor:pointer;color:var(--ink);align-content:start;min-height:78px}
+.plan-o b{font-size:18px}
+.plan-o:hover{border-color:var(--accent)}
+.plan-o[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.plan-m{font-size:16px;font-weight:700;color:var(--accent)}
+.plan-s{font-size:15px;color:var(--muted)}
+.plan-pick{margin-top:12px;display:grid;gap:2px}
+.plan-row{display:flex;align-items:center;gap:12px;padding:8px 6px;border-radius:10px;font-size:18px;cursor:pointer}
+.plan-row:hover{background:var(--chip)}
+.plan-row input{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.plan-name{flex:1}
+.plan-sm{color:var(--muted);font-size:15px;white-space:nowrap}
+.plan-tot{margin:0;font-weight:700;flex:1}
+.plan-line{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 14px;font-size:17px}
+.plan-cancel{margin-top:10px}
+.plan-out{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:16px;color:var(--muted);border:2px dashed var(--line);border-radius:12px;padding:8px 12px;margin:-.2em 0 .8em}
+.sec[data-plan="off"] .sec-body{opacity:.5}
+.sec[data-plan="off"] .sec-title{color:var(--muted)}
+.pgmark{display:inline-block;font-size:.62em;font-weight:700;letter-spacing:.02em;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 .5em;margin-right:.2em;vertical-align:.15em;line-height:1.5;user-select:none}
 .status{max-width:1180px;margin:0 auto;padding:0 24px;font-size:17px;color:var(--muted)}
 .status:not(:empty){padding-block:2px 10px}
 .status.err{color:var(--err);font-weight:700}
@@ -204,7 +234,8 @@ body[data-view="library"] #contentsBtn,body[data-view="library"] #notesBtn,body[
 
 /* player */
 .player{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:0 16px calc(14px + env(safe-area-inset-bottom,0px));pointer-events:none}
-.player-in{pointer-events:auto;max-width:880px;margin:0 auto;background:var(--sheet);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:10px 14px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"trans where tools";gap:8px 16px;align-items:center}
+.player-in{pointer-events:auto;max-width:920px;margin:0 auto;background:var(--sheet);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:10px 14px;display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;grid-template-areas:"trans where speed tools";gap:8px 16px;align-items:center}
+#speedBtn{grid-area:speed}
 .transport{grid-area:trans;display:flex;align-items:center;gap:2px}
 .ic{width:48px;height:48px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center;cursor:pointer;padding:0}
 .ic:hover{background:var(--chip)}
@@ -231,7 +262,8 @@ input[type=range]{width:100%;accent-color:var(--accent);height:26px;margin:0}
 .mini:hover{background:var(--chip)}
 @media (max-width:720px){
   .player{padding-inline:8px}
-  .player-in{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"where where" "trans tools";border-radius:20px;padding:10px}
+  .player-in{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"where where speed" "trans tools tools";border-radius:20px;padding:10px}
+  #speedBtn{min-height:44px;min-width:58px;background:var(--chip)}
   .tools{justify-content:flex-end}
   .sheet{margin-bottom:calc(240px + env(safe-area-inset-bottom,0px))}
 }
@@ -437,6 +469,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
 <section id="libraryView" class="library" hidden aria-labelledby="libTitle">
   <div class="lib-head">
     <h1 class="lib-title" id="libTitle">Your papers</h1>
+    <p class="lib-welcome" id="libWelcome" hidden>Open a research paper and it will be read aloud to you, skipping citations, equations and page clutter. Your place, highlights and notes are saved on this device.</p>
     <button class="btn quiet" id="backToReading" hidden>Back to reading</button>
   </div>
   <div class="install-tip" id="installTip" hidden>
@@ -448,6 +481,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
     <div class="row">
       <button class="btn primary big" id="openBtn"><svg class="i" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>Open a paper</button>
       <button class="btn" id="pasteBtn">Paste text instead</button>
+      <button class="btn quiet" id="sampleBtn" hidden>Try a sample paper</button>
     </div>
     <div id="pastePanel" class="paste" hidden>
       <label for="pasteArea">Paste the paper's text</label>
@@ -483,6 +517,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
       <div class="where-top"><span id="whereSec">—</span><span id="whereLeft"></span></div>
       <input type="range" id="seek" min="0" max="0" value="0" step="1" aria-label="Position in the paper">
     </div>
+    <button class="tool" id="speedBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="speedMenu" title="Reading speed"><span class="spd" id="speedVal">1.0×</span><span class="tl">Speed</span></button>
     <div class="tools">
       <button class="tool" id="hlBtn" aria-label="Highlight" aria-pressed="false" title="Highlight this sentence (H)"><svg class="i" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5L10 19H5v-5z"/><path d="M4 22h16"/></svg><span class="tl">Highlight</span></button>
       <button class="tool" id="noteBtn" aria-label="Note" title="Add a note to this sentence (N)"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/><path d="M8.5 9h7"/></svg><span class="tl">Note</span></button>
@@ -491,6 +526,8 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
     </div>
   </div>
 </div>
+
+<div class="spmenu" id="speedMenu" role="menu" aria-label="Reading speed" hidden></div>
 
 <div class="panel" id="settings" role="dialog" aria-label="Listening settings" hidden>
   <h2>Listening settings</h2>
@@ -583,6 +620,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
   <button role="menuitem" id="popPlay"><svg class="i" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>Read from here</span></button>
   <button role="menuitem" id="popHl"><svg class="i" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5L10 19H5v-5z"/><path d="M4 22h16"/></svg><span>Highlight</span></button>
   <button role="menuitem" id="popNote"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v10l-6 6H5z"/><path d="M13 20v-6h6"/><path d="M8.5 9h7"/></svg><span>Add note</span></button>
+  <button role="menuitem" id="popCopy"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy quote</span></button>
   <button role="menuitem" id="popRange"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Highlight several sentences…</span></button>
 </div>
 
@@ -708,13 +746,20 @@ function splitSentences(t){
   const out=[];let start=0;const re=/[.!?]["”’)]*\s+(?=["“(]?[A-Z0-9])/g;let m;
   while((m=re.exec(t))){
     const before=t.slice(start,m.index+1);const w=before.match(/(\S+)\.$/);
-    if(w && ABBR.test(w[1].replace(/^[(“"]/,''))) continue;
+    if(w){const wd=w[1].replace(/^[(“"]/,'');if(ABBR.test(wd)||/^(?:e\.g|i\.e|cf|viz|resp|Suppl|Eqs?|Secs?|Chs?|Ch|Tabs?)$/i.test(wd)||/^(?:\p{Lu}\.)+\p{Lu}$/u.test(wd)) continue;}
     if(/\b(?:Figure|Table|Box|Equation)\s+S?\d+[A-Za-z]?\.$/.test(before)) continue;
+    const inner=before.replace(/[.!?]$/,'');if((inner.match(/\(/g)||[]).length>(inner.match(/\)/g)||[]).length && before.length<600) continue; // inside a parenthesis (a citation list)
     out.push(t.slice(start,m.index+m[0].length).trim());start=m.index+m[0].length;
   }
   if(start<t.length) out.push(t.slice(start).trim());
   const res=[];
-  for(const s of out){ if(s.length>380) res.push(...s.split(/(?<=;)\s+/)); else if(s) res.push(s); }
+  for(const s of out){
+    if(s.replace(/\([^()]*\)/g,'').length<=380){ if(s) res.push(s); continue; }
+    // a very long sentence: break it at semicolons, but never inside brackets (a citation list)
+    let d=0,from=0;
+    for(let i=0;i<s.length;i++){const c=s[i];if(c==='('||c==='[')d++;else if((c===')'||c===']')&&d>0)d--;else if(c===';'&&d===0&&/\s/.test(s[i+1]||'')){res.push(s.slice(from,i+1).trim());from=i+1}}
+    if(from<s.length) res.push(s.slice(from).trim());
+  }
   return res.filter(s=>/[A-Za-z0-9]/.test(s));
 }
 
@@ -750,14 +795,14 @@ function buildDoc(title,blocks,st,o){
       continue;
     }
     if(b.drop){ st.labels++; continue; }
-    if(cur.skip==='refs'||cur.skip==='appendix'){ if(b.type==='eq'){const last=cur.paras[cur.paras.length-1];if(last&&last.type==='eq'){last.raw+='  '+t;continue}} cur.paras.push({type:b.type==='eq'?'eq':'p',raw:t}); continue; }
+    if(cur.skip==='refs'||cur.skip==='appendix'){ if(b.type==='eq'){const last=cur.paras[cur.paras.length-1];if(last&&last.type==='eq'){last.raw+='  '+t;continue}} cur.paras.push(b.type!=='eq'&&b.pmap?{type:'p',raw:t,pm:b.pmap}:{type:b.type==='eq'?'eq':'p',raw:t}); continue; }
     if(b.type==='eq'){ const last=cur.paras[cur.paras.length-1]; if(last&&last.type==='eq'&&!b.region&&!last.region){last.raw+='  '+t;continue} st.eq++; cur.paras.push({type:'eq',raw:t,region:b.region}); continue; }
     if(CAPTION_RE.test(t)){ st.caps++; caps.push(t); if(b.region){ st.figs=(st.figs||0)+1; cur.paras.push({type:'figure',kind:b.kind,raw:t,region:b.region}); } continue; }
     if(looksTable(t)){ st.tables=(st.tables||0)+1; cur.paras.push({type:'table',raw:t,region:b.region}); continue; }
     if(!seenHead && (t.length<200 || (t.length<500 && /@|\b(?:University|Institute|Department|College|Laborator|School of|Inc\.)/.test(t)))){ st.front++; continue; }
     if(!seenHead && t.length>=200 && !AFFIL.test(t.slice(0,200)) && (t.match(/\b(?:the|of|and|to|is|that|in|for|with|as|are|this|it|you|we)\b/gi)||[]).length>=6) seenHead=true; // after the first real paragraph, the front matter is over
     if(!o.keepShort && ((t.length<40 && t.split(' ').length<6 && !/[.!?:]$/.test(t)) || t.length<8)){ st.labels++; continue; }
-    cur.paras.push({type:'p',raw:t});
+    cur.paras.push(b.pmap?{type:'p',raw:t,pm:b.pmap}:{type:'p',raw:t});
   }
   push();
   if(caps.length) secs.push({title:'Figure and table captions',speak:'Figure and table captions',caps:true,skip:'',paras:caps.map(raw=>({type:'p',raw}))});
@@ -765,10 +810,17 @@ function buildDoc(title,blocks,st,o){
   for(const s of secs){
     for(const p of s.paras){
       if(p.type!=='p') continue;
-      p.sentences=splitSentences(cleanText(p.raw, s.skip ? scratch : st));
+      // show the paper's own words; speak a cleaned copy (citations, links and symbols handled)
+      p.sentences=splitSentences(p.raw);
+      p.say=p.sentences.map(x=>{const c=cleanText(x, s.skip ? scratch : st);return /[A-Za-z0-9]/.test(c)?c:''});
+      if(p.pm){ // which page each sentence starts on
+        let off=0;
+        p.pgs=p.sentences.map(x=>{const i=p.raw.indexOf(x.slice(0,24),off);if(i>=0)off=i;const hit=p.pm.find(e=>off<e[0]);return hit?hit[1]:p.pm[p.pm.length-1][1]});
+      }
+      delete p.pm;
     }
   }
-  return {v:2,title:title||'Untitled paper',sections:secs,stats:st};
+  return {v:3,title:title||'Untitled paper',sections:secs,stats:st};
 }
 
 /* ---------- pasted or .txt text ---------- */
@@ -876,12 +928,14 @@ function findSplit(items,x0,x1){
 function pdfToDoc(pages,meta,fileName,opt){
   opt=opt||{};
   const st=newStats();
+  let pageLabel=pi=>String(pi+1);
   if(opt.ocr) pages.forEach(pg=>{pg.items=pg.items.filter(it=>{const t=it.str; // pen marks read as "AAA" or "N\A"
     return !(/[\\<>^~]/.test(t)||(/^([A-Za-z])\1+[.,;:]?$/.test(t)&&!/^[IVXivx]+$/.test(t)))});
     // short fragments entirely out in the margins are pen notes, not text
     // a stray one- or two-character mark far from any word on its line
     pg.items=pg.items.filter(it=>{
       if(it.str.length>2) return true;
+      if(/^\d{1,2}$/.test(it.str)&&(it.y>pg.h*0.85||it.y<pg.h*0.15)) return true; // a page number in the header or footer
       const near=pg.items.some(o=>o!==it&&Math.abs(o.y-it.y)<it.size*0.6&&Math.max(o.x-(it.x+it.w),it.x-(o.x+o.w))<it.size*3);
       return near||pg.items.every(o=>o===it||Math.abs(o.y-it.y)>=it.size*0.6); // alone on its line (a page number) is fine
     });
@@ -997,6 +1051,18 @@ function pdfToDoc(pages,meta,fileName,opt){
   pages.forEach(pg=>{const seen=new Set();pg.lines.filter(edge).forEach(l=>{const k=key(l);if(!seen.has(k)){seen.add(k);cnt.set(k,(cnt.get(k)||0)+1)}})});
   const thresh=Math.max(3,Math.ceil(n*0.2));
   const textPages=new Map();pages.forEach((pg,pi)=>pg.lines.forEach(l=>{const k=key(l);if(!textPages.has(k))textPages.set(k,new Set());textPages.get(k).add(pi)}));
+  // printed page numbers (a journal article may start on page 345): a number in the header or footer that
+  // keeps the same distance from the page's position in the file on most pages
+  const offs=new Map();
+  pages.forEach((pg,pi)=>{const seen=new Set();for(const l of pg.lines){if(!edgeOf(l,pi))continue;const t=l.text.trim();
+    const m=/^(?:page\s*)?(\d{1,4})$/i.exec(t)||(t.length<90&&(/^(\d{1,4})\s+\D/.exec(t)||/\D\s+(\d{1,4})$/.exec(t)));
+    if(m){const o=+m[1]-(pi+1);if(o>=0&&!seen.has(o)){seen.add(o);offs.set(o,(offs.get(o)||0)+1)}}}});
+  let pOff=null,pBest=0;for(const [o,c] of offs)if(c>pBest){pBest=c;pOff=o}
+  if(typeof __dbg!=="undefined")__dbg.push("OFFS "+JSON.stringify([...offs])+" n="+n);
+  if(!(pBest>=2&&pBest>=n*0.4)) pOff=null;
+  const split=pages.some(q=>q.dx);
+  pageLabel=pi=>{if(pOff!=null) return String(pi+1+pOff);if(split) return String(pi+1); // book spreads: count the book pages
+    const src=pages[pi].src!=null?pages[pi].src:pi;const lb=opt.labels&&opt.labels[src];return lb&&String(lb).trim()?String(lb).trim():String(src+1)};
   pages.forEach((pg,pi)=>{pg.lines=pg.lines.filter(l=>{
     if(n<3&&l.y>l.h*0.9&&l.text.length<60&&outer(l,pg)&&[...(textPages.get(key(l))||[])].some(q=>q!==pi)){st.headers++;return false}
     // on a scan, marks in the margin can get read into the header, so compare only its first words
@@ -1121,6 +1187,10 @@ function pdfToDoc(pages,meta,fileName,opt){
     if(b.type==='eq'){ if(b.text.replace(/\s/g,'').length<5){b.drop=true;continue} b.region=regionFor(b.lines,'eq'); }
     else if(b.type==='para'&&looksTable(b.text)) b.region=regionFor(b.lines,'eq');
   }
+  // where each paragraph's lines sit, so sentences can carry page numbers
+  for(const b of blocks){if(b.type!=='para'||!b.lines||!b.lines.length)continue;
+    const pm=[];let pos=0;for(const l of b.lines){pos+=l.text.length+1;const lb=pageLabel(l.page);if(pm.length&&pm[pm.length-1][1]===lb)pm[pm.length-1][0]=pos;else pm.push([pos,lb])}
+    pm[pm.length-1][0]=Infinity;b.pmap=pm}
   if(typeof __dbg!=="undefined")__dbg.push("BLOCKS",...blocks.slice(0,6).map(b=>b.type+" p"+b.page+" s"+(b.size||0).toFixed(1)+" "+b.text.slice(0,50)));
   // a table of contents: several numbered headings in a row with nothing between them
   for(let i=0;i<blocks.length;){
@@ -1596,13 +1666,15 @@ function render(){
   if(s.headers) chips.push(plural(s.headers,'page header or number','page headers and numbers'));
   if(s.front) chips.push(plural(s.front,'author or affiliation line'));
   if(s.labels) chips.push(plural(s.labels,'stray figure label'));
+  head.append(el('div','plan'));
   if(chips.length){
     const d=el('details','skipping');
     const sum=chips.length>2?'Not read aloud: '+chips[0]+', '+chips[1]+' and '+(chips.length-2)+' more':'Not read aloud: '+chips.join(' and ');
     d.append(el('summary',null,sum));const c=el('div','chips');chips.forEach(x=>c.append(el('span','chip',x)));d.append(c);head.append(d);
   }
   let n=0;
-  const mk=(text,kind,say)=>{const sp=el('span','s',text);sp.dataset.n=n++;sp.dataset.kind=kind;if(say)sp.dataset.say=say;return sp};
+  const mk=(text,kind,say)=>{const sp=el('span','s',text);sp.dataset.n=n++;sp.dataset.kind=kind;if(say!=null)sp.dataset.say=say;return sp};
+  let lastPg=null;
   doc.sections.forEach((sec,si)=>{
     const S=el('section','sec');S.id='sec-'+si;S.dataset.i=si;S.dataset.name=sec.speak;
     if(sec.caps) S.dataset.caps='1';
@@ -1649,13 +1721,87 @@ function render(){
         if(p.type==='figure') f.append(el('figcaption',null,p.raw));
         content.append(f);continue;
       }
-      const P=el('p');(p.sentences||[p.raw]).forEach(x=>{P.append(mk(x,'s'),' ')});content.append(P);
+      const P=el('p');
+      (p.sentences||[p.raw]).forEach((x,i)=>{
+        const pg=p.pgs&&p.pgs[i];
+        if(pg&&pg!==lastPg){const m=el('span','pgmark','p. '+pg);m.title='Page '+pg+' of the original';P.append(m,' ');lastPg=pg}
+        const sp=mk(x,'s',p.say?p.say[i]:null);if(pg)sp.dataset.pg=pg;P.append(sp,' ');
+      });
+      content.append(P);
     }
     S.append(content);body.append(S);
   });
   $$('#docBody .s').forEach(decorate);
 }
 
+/* ---------- listening plans: the whole paper, its key sections, or sections you choose ---------- */
+const KEY_RE=/\b(?:abstract|summary|introduction|results?|findings|discussion|conclusions?|concluding|implications)\b/i;
+function planSecs(){return cur?cur.doc.sections.map((s,si)=>({s,si})).filter(x=>!x.s.skip&&(!x.s.caps||opts.caps)&&secChars(x.s)>0):[]}
+function keyOff(){
+  const all=planSecs(),hasAbs=all.some(x=>/abstract|summary/i.test(x.s.speak));
+  const on=new Set(all.filter(x=>(!x.s.caps&&KEY_RE.test(x.s.speak))||(x.si===all[0].si&&/^Opening$/.test(x.s.speak)&&!hasAbs)).map(x=>x.si));
+  if(!on.size||on.size===all.length) return null; // no useful shortcut in this paper
+  const off={};all.forEach(x=>{if(!on.has(x.si))off[x.si]=1});return off;
+}
+function planOff(){const pl=cur&&cur.state.plan;return pl&&pl.mode!=='full'?(pl.off||{}):{}}
+function applyPlan(){
+  const off=planOff();
+  $$('#docBody .sec').forEach(S=>{
+    const si=+S.dataset.i,out=!!off[si]&&S.dataset.skip!=='1';
+    S.dataset.plan=out?'off':'';
+    let t=S.querySelector('.plan-out');
+    if(out&&!t){t=el('div','plan-out');const b=el('button','btn sm','Add to my plan');b.type='button';
+      b.onclick=()=>{const p=cur.state.plan;const o=Object.assign({},p.off);delete o[si];setPlan({mode:'custom',off:o},true)};
+      t.append(el('span',null,'Not in your listening plan.'),b);S.querySelector('.sec-title').after(t)}
+    else if(!out&&t) t.remove();
+  });
+}
+function setPlan(pl,quiet){
+  pl.at=Date.now();cur.state.plan=pl;scheduleSave();
+  applyPlan();const c=queue[idx];buildQueue();renderToc();renderPlanCard();
+  if(!playing&&!cur.state.pos){idx=0;mark(false)}
+  if(!quiet){const m=minsFor(docChars(cur.doc,planOff()));setStatus((pl.mode==='full'?'Listening to the whole paper':pl.mode==='key'?'Listening to the key sections':'Listening to the sections you chose')+', about '+fmtMins(m)+'. Press Play to start.')}
+}
+function renderPlanCard(){
+  const box=$('#docHead .plan');if(!box||!cur) return;
+  box.innerHTML='';
+  const all=planSecs(),pl=cur.state.plan||(cur.state.pos>0?{mode:'full'}:null); // papers already started just read on
+  if(all.length<2){box.hidden=true;return} // nothing to choose between
+  box.hidden=false;
+  const full=minsFor(docChars(cur.doc)),ko=keyOff();
+  const names=off=>all.filter(x=>!off[x.si]).map(x=>x.s.speak);
+  const listTxt=a=>a.length>4?a.slice(0,3).join(', ')+' and '+(a.length-3)+' more':a.length>1?a.slice(0,-1).join(', ')+' and '+a[a.length-1]:a[0]||'';
+  if(pl&&!box.dataset.open){
+    const off=planOff(),chosen=names(off);
+    const what=pl.mode==='full'?'the whole paper':pl.mode==='key'?'the key sections: '+listTxt(chosen):'your sections: '+listTxt(chosen);
+    const line=el('div','plan-line');
+    line.append(el('span',null,'Listening to '+what+' · about '+fmtMins(minsFor(docChars(cur.doc,off)))));
+    const ch=el('button','btn sm quiet','Change');ch.type='button';ch.onclick=()=>{box.dataset.open='1';renderPlanCard();box.querySelector('button').focus()};
+    line.append(ch);box.append(line);return;
+  }
+  box.append(el('h2','plan-h','What would you like to listen to?'));
+  const opts=el('div','plan-opts');
+  const opt=(title,sub,mins,on,fn)=>{const b=el('button','plan-o');b.type='button';b.setAttribute('aria-pressed',on?'true':'false');
+    b.append(el('b',null,title),el('span','plan-m','about '+fmtMins(mins)));if(sub)b.append(el('span','plan-s',sub));b.onclick=fn;opts.append(b);return b};
+  opt('The whole paper',plural(all.length,'section'),full,pl&&pl.mode==='full',()=>{delete box.dataset.open;setPlan({mode:'full'})});
+  if(ko) opt('Key sections',listTxt(names(ko)),minsFor(docChars(cur.doc,ko)),pl&&pl.mode==='key',()=>{delete box.dataset.open;setPlan({mode:'key',off:ko})});
+  const chooseB=opt('Choose sections…','Pick exactly which parts to hear',0,pl&&pl.mode==='custom',()=>{picker.hidden=!picker.hidden;chooseB.setAttribute('aria-expanded',String(!picker.hidden));if(!picker.hidden)picker.querySelector('input').focus()});
+  chooseB.querySelector('.plan-m').remove();chooseB.setAttribute('aria-expanded','false');
+  box.append(opts);
+  // the section checklist
+  const picker=el('div','plan-pick');picker.hidden=!(pl&&pl.mode==='custom');chooseB.setAttribute('aria-expanded',String(!picker.hidden));
+  const cur0=planOff();
+  const tot=el('p','plan-tot');
+  const upd=()=>{const off={};picker.querySelectorAll('input').forEach(i=>{if(!i.checked)off[i.dataset.si]=1});tot.textContent=Object.keys(off).length===all.length?'Choose at least one section.':'Together: about '+fmtMins(minsFor(docChars(cur.doc,off)));go.disabled=Object.keys(off).length===all.length;return off};
+  for(const x of all){
+    const lab=el('label','plan-row');const cb=el('input');cb.type='checkbox';cb.dataset.si=x.si;cb.checked=!(pl&&pl.mode!=='full'&&cur0[x.si]);cb.onchange=()=>upd();
+    lab.append(cb,el('span','plan-name',x.s.speak),el('span','plan-sm',fmtMins(minsFor(secChars(x.s)))));picker.append(lab);
+  }
+  const go=el('button','btn primary','Use these sections');go.type='button';
+  go.onclick=()=>{const off=upd();delete box.dataset.open;setPlan(Object.keys(off).length?{mode:'custom',off}:{mode:'full'})};
+  const row=el('div','row');row.append(tot,go);picker.append(row);box.append(picker);upd();
+  if(pl){const cancel=el('button','btn sm quiet plan-cancel','Keep my current plan');cancel.type='button';cancel.onclick=()=>{delete box.dataset.open;renderPlanCard()};box.append(cancel)}
+}
 function renderToc(){
   const secs=$$('#docBody .sec');
   $$('.toc-list').forEach(list=>{
@@ -1664,6 +1810,7 @@ function renderToc(){
       const b=el('button');b.type='button';b.dataset.i=S.dataset.i;
       b.append(el('span',null,S.querySelector('.sec-title').textContent));
       if(S.dataset.skip==='1') b.append(el('span','tag','skipped'));
+      else if(S.dataset.plan==='off') b.append(el('span','tag','not in plan'));
       else if(S.dataset.caps==='1'&&!opts.caps) b.append(el('span','tag','off'));
       b.addEventListener('click',()=>{
         closeDrawers();
@@ -1686,8 +1833,9 @@ let queue=[],idx=0,playing=false,token=0,voices=[],voice=null,rate=1,lock=null;
 const synth=window.speechSynthesis;
 function included(e){
   const S=e.closest('.sec');
-  if(S.dataset.skip==='1') return false;
+  if(S.dataset.skip==='1'||S.dataset.plan==='off') return false;
   if(S.dataset.caps==='1'&&!opts.caps) return false;
+  if(e.dataset.say==='') return false; // nothing left to say once citations are taken out
   const k=e.dataset.kind;
   if(k==='heading'&&!opts.titles) return false;
   if(k==='eq'&&!opts.eq) return false;
@@ -1702,6 +1850,14 @@ function buildQueue(){
   $('#seek').max=Math.max(0,queue.length-1);
   mark(false);
 }
+const CHARS_PER_SEC=14.5; // spoken characters per second at normal speed
+function docChars(doc,skipOff){let c=0;doc.sections.forEach((s,si)=>{if(s.skip||(s.caps&&!opts.caps))return;if(skipOff&&skipOff[si])return;c+=secChars(s)});return c}
+function secChars(s){let c=(s.speak||'').length;for(const p of s.paras)if(p.type==='p')c+=(p.say||p.sentences||[p.raw]).join(' ').length;return c}
+function minsFor(chars){return Math.max(1,Math.round(chars/(CHARS_PER_SEC*rate)/60))}
+function fmtMins(m){return m<60?m+' min':Math.floor(m/60)+' h '+(m%60?m%60+' min':'')}
+function sayOf(e){return e.dataset.say!=null?e.dataset.say:e.textContent}
+// the page(s) a run of sentences comes from, for quoting: "p. 7" or "pp. 7–8"
+function pagesOf(spans){const ps=[...new Set(spans.map(x=>x.dataset.pg).filter(Boolean))];return !ps.length?'':ps.length===1?'p. '+ps[0]:'pp. '+ps[0]+'–'+ps[ps.length-1]}
 function smooth(){return matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}
 function mark(scroll){
   $$('#docBody .s.on').forEach(x=>x.classList.remove('on'));
@@ -1711,9 +1867,8 @@ function mark(scroll){
   e.classList.add('on');
   if(scroll&&opts.scroll) e.scrollIntoView({block:'center',behavior:smooth()});
   $('#whereSec').textContent=e.closest('.sec').dataset.name;
-  let chars=0;for(let i=idx;i<queue.length;i++) chars+=(queue[i].dataset.say||queue[i].textContent).length;
-  const mins=Math.max(1,Math.round(chars/(14.5*rate)/60));
-  $('#whereLeft').textContent=(idx+1)+' of '+queue.length+' · about '+mins+' min left';
+  let chars=0;for(let i=idx;i<queue.length;i++) chars+=sayOf(queue[i]).length;
+  $('#whereLeft').textContent=(idx+1)+' of '+queue.length+' · about '+fmtMins(minsFor(chars))+' left';
   $('#hlBtn').setAttribute('aria-pressed',cur&&cur.state.highlights[e.dataset.n]?'true':'false');
   updateToc();
   if(cur&&cur.state.pos!==+e.dataset.n){cur.state.pos=+e.dataset.n;scheduleSave()}
@@ -1723,7 +1878,7 @@ function speak(){
   const e=queue[idx];
   if(!e){finish();return}
   mark(true);
-  const u=new SpeechSynthesisUtterance(e.dataset.say||e.textContent);
+  const u=new SpeechSynthesisUtterance(sayOf(e));
   if(voice){u.voice=voice;u.lang=voice.lang}
   u.rate=rate;
   const my=++token;
@@ -1860,7 +2015,8 @@ function renderNotes(){
   for(const g of groups){
     const sp=g.spans[0],n=g.last;
     const li=el('li','nitem');
-    li.append(el('div','nsec',sp.closest('.sec').dataset.name+(g.ns.length>1?' · '+g.ns.length+' sentences':'')));
+    const pgs=pagesOf(g.spans);
+    li.append(el('div','nsec',sp.closest('.sec').dataset.name+(pgs?' · '+pgs:'')+(g.ns.length>1?' · '+g.ns.length+' sentences':'')));
     const q=el('blockquote','nquote'+(g.hl?' is-hl':''));q.append(el('span',null,g.text));li.append(q);
     const note=cur.state.notes[n];
     if(note&&note.text) li.append(el('p','ntext',note.text));
@@ -1868,18 +2024,20 @@ function renderNotes(){
     const goB=el('button','btn sm','Go to sentence');
     goB.onclick=()=>{closeDrawers();const i=queue.indexOf(sp);if(i>=0){idx=i;playing?restart():mark(true)}else sp.scrollIntoView({block:'center',behavior:smooth()})};
     const ed=el('button','btn sm quiet',note&&note.text?'Edit note':'Add note');ed.onclick=()=>openNote(n,g.ns.length>1?g.text:null);
-    row.append(goB,ed);
+    const cq=el('button','btn sm quiet','Copy quote');cq.onclick=()=>copyQuote(g.spans);
+    row.append(goB,ed,cq);
     if(g.hl){const rm=el('button','btn sm quiet','Remove highlight');rm.onclick=()=>{if(g.ns.length>1)hlRange(g.spans);else toggleHl(n)};row.append(rm)}
     li.append(row);list.append(li);
   }
 }
 function notesText(){
-  const lines=[cur.doc.title,'Highlights, notes and AI results from Paper Out Loud, '+new Date().toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'}),''];
+  const lines=[cur.doc.title,'Highlights and notes from Paper Out Loud, '+new Date().toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'}),''];
   let lastSec='';
   for(const g of markedGroups()){
     const secName=g.spans[0].closest('.sec').dataset.name;
     if(secName!==lastSec){lines.push('','== '+secName+' ==','');lastSec=secName}
-    lines.push('“'+g.text+'”');
+    const pgs=pagesOf(g.spans);
+    lines.push('“'+g.text+'”'+(pgs?' ('+pgs+')':''));
     const note=cur.state.notes[g.last];
     if(note&&note.text) lines.push('Note: '+note.text);
     lines.push('');
@@ -1938,6 +2096,7 @@ function mergeState(a,b){
   const m={id:a.id,pos:a.pos||b.pos||0,highlights:Object.assign({},b.highlights,a.highlights),notes:Object.assign({},b.notes),include:Object.assign({},b.include,a.include)};
   for(const [k,v] of Object.entries(a.notes||{})){const o=m.notes[k];if(!o||(v.at||0)>=(o.at||0))m.notes[k]=v}
   m.pad=((a.pad&&a.pad.at)||0)>=((b.pad&&b.pad.at)||0)?a.pad:b.pad;if(!m.pad)delete m.pad;
+  const pa=a.plan,pb=b.plan;m.plan=pa&&(!pb||(pa.at||0)>=(pb.at||0))?pa:pb;if(!m.plan)delete m.plan;
   m.ai=Object.assign({},b.ai);
   for(const [k,v] of Object.entries(a.ai||{})){const o=m.ai[k];if(!o||(v.at||0)>=(o.at||0))m.ai[k]=v}
   return m;
@@ -1973,6 +2132,14 @@ async function restoreBackup(file){
   setStatus('Backup restored: '+parts.join(', ')+'. It held '+plural(marks,'highlight or note','highlights and notes')+'.',false,true);
 }
 
+// copy text, falling back to the old way where the clipboard isn't allowed
+function copyText(text,done){
+  const fallback=()=>{const t=el('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';document.body.append(t);t.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}t.remove();setStatus(ok?done:'Copying isn’t allowed here.',!ok)};
+  try{navigator.clipboard.writeText(text).then(()=>setStatus(done),fallback)}catch(e){fallback()}
+}
+// a quote ready to paste into writing: “words” (Title, p. 7)
+function quoteOf(spans){const pg=pagesOf(spans);return '“'+spans.map(x=>x.textContent).join(' ')+'” ('+cur.doc.title+(pg?', '+pg:'')+')'}
+function copyQuote(spans){const pg=pagesOf(spans);copyText(quoteOf(spans),'Quote copied'+(pg?' with its page number ('+pg+')':'')+'. Paste it into your writing.')}
 function copyNotes(){
   const text=notesText();
   const fallback=()=>{const t=el('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';document.body.append(t);t.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}t.remove();setStatus(ok?'Copied. Paste them into any document.':'Copying isn’t allowed here. Use “Save as a file” instead.',!ok)};
@@ -2002,7 +2169,7 @@ function showPop(target,x,y,rect){
   const sp=spans[0],multi=spans.length>1;
   popFor=sp;popSpans=spans;popReturn=document.activeElement;
   const last=spans[spans.length-1],ln=last.dataset.n;
-  $('#popPlay').disabled=!queue.includes(sp);
+  $('#popPlay').disabled=!queue.some(q=>+q.dataset.n>=+sp.dataset.n);
   const allOn=spans.every(q=>cur.state.highlights[q.dataset.n]);
   $('#popHl span').textContent=multi?(allOn?'Remove highlight from '+spans.length+' sentences':'Highlight '+spans.length+' sentences'):(allOn?'Remove highlight':'Highlight');
   $('#popNote span').textContent=cur.state.notes[ln]&&cur.state.notes[ln].text?'Edit note':'Add note';
@@ -2019,9 +2186,10 @@ function showPop(target,x,y,rect){
   (queue.includes(sp)?$('#popPlay'):$('#popHl')).focus({preventScroll:true});
 }
 function closePop(){if($('#pop').hidden)return;$('#pop').hidden=true;popFor=null;popSpans=[]}
-$('#popPlay').onclick=()=>{const sp=popFor;closePop();const i=queue.indexOf(sp);if(i<0)return;idx=i;playing?restart():play()};
+$('#popPlay').onclick=()=>{const sp=popFor;closePop();let i=queue.indexOf(sp);if(i<0)i=queue.findIndex(q=>+q.dataset.n>+sp.dataset.n);if(i<0)return;idx=i;playing?restart():play()};
 $('#popHl').onclick=()=>{const spans=popSpans.slice();closePop();try{getSelection().removeAllRanges()}catch(_){}if(spans.length>1)hlRange(spans);else toggleHl(spans[0].dataset.n)};
 $('#popNote').onclick=()=>{const spans=popSpans.slice();closePop();try{getSelection().removeAllRanges()}catch(_){}openNote(spans[spans.length-1].dataset.n,spans.length>1?spans.map(q=>q.textContent).join(' '):null)};
+$('#popCopy').onclick=()=>{const spans=popSpans.slice();closePop();try{getSelection().removeAllRanges()}catch(_){}copyQuote(spans)};
 $('#popRange').onclick=()=>{
   const sp=popFor;closePop();cancelPicking();
   rangeStart=sp;sp.classList.add('pick-start');document.body.classList.add('picking');
@@ -2168,7 +2336,7 @@ function applySettingsObj(o){
   applyScheme();
   if(o.fs) fs=+o.fs;
   applyFs();
-  $('#rate').value=rate;$('#rateOut').textContent=rate.toFixed(1)+'×';
+  $('#rate').value=rate;$('#rateOut').textContent=rate.toFixed(1)+'×';$('#speedVal').textContent=fmtRate(rate);
   [['optTitles','titles'],['optCaps','caps'],['optScroll','scroll']].forEach(([id,k])=>{$('#'+id).checked=!!opts[k]});
   if(o.voice){saved.voice=o.voice;const i=voices.findIndex(v=>v.name===o.voice);if(i>=0)voice=voices[i]}
   if(voices.length) renderVoiceSelect();
@@ -2734,7 +2902,10 @@ async function renderLibrary(){
   const states=new Map((await Store.all('state')).map(s=>[s.id,s]));
   if(cur) states.set(cur.id,cur.state);
   const ul=$('#libList');ul.innerHTML='';
-  $('#libEmpty').hidden=metas.length>0;
+  $('#libEmpty').hidden=true;
+  const first=!metas.length;
+  $('#libTitle').textContent=first?'Welcome to Paper Out Loud':'Your papers';$('#libWelcome').hidden=!first;
+  $('#sampleBtn').hidden=metas.some(m=>m.sample);
   $('#backToReading').hidden=!cur;
   backupInfo();
   await loadReading();renderReading();
@@ -2743,6 +2914,7 @@ async function renderLibrary(){
     const pct=m.total&&s.pos?Math.min(100,Math.round((s.pos+1)/m.total*100)):0;
     const hk=Object.keys(s.highlights||{}).map(Number).sort((a,b)=>a-b);const hls=hk.filter((n,i)=>i===0||n!==hk[i-1]+1).length,nts=Object.values(s.notes||{}).filter(x=>x.text).length;
     const parts=['Opened '+rel(m.openedAt),pct?pct+'% listened':'Not started'];
+    if(m.chars) parts.splice(1,0,'about '+fmtMins(minsFor(m.chars))+' to listen');
     if(hls) parts.push(plural(hls,'highlight'));
     if(nts) parts.push(plural(nts,'note'));
     const ais=Object.keys(s.ai||{}).length;if(ais) parts.push(plural(ais,'AI result'));
@@ -2775,11 +2947,12 @@ async function openPaper(id,o={}){
   state.highlights=state.highlights||{};state.notes=state.notes||{};state.include=state.include||{};
   meta.openedAt=Date.now();Store.put('meta',meta);
   if(!$('#pad').hidden)savePadNow();
+  if(!meta.chars){meta.chars=docChars(rec.doc);Store.put('meta',meta)}
   cur={id,meta,doc:rec.doc,state};
   if(aiCtl)aiCtl.abort();aiKind=null;aiBusy=false;
   setView('reader');
   if(!$('#pad').hidden)loadPad();
-  render();queue=[];idx=0;buildQueue();renderToc();renderNotes();
+  render();applyPlan();renderPlanCard();queue=[];idx=0;buildQueue();renderToc();renderNotes();
   if(state.pos>0){
     const i=queue.findIndex(q=>+q.dataset.n>=state.pos);
     if(i>0){
@@ -2798,13 +2971,13 @@ async function addPaper(id,doc,info){
     // upgrade a copy saved before pictures existed, if nothing is attached to its sentences yet
     const old=await Store.get('docs',id),st=await Store.get('state',id);
     const marks=st?Object.keys(st.highlights||{}).length+Object.keys(st.notes||{}).length:0;
-    if(old&&!old.doc.v&&!marks){await Store.put('docs',{id,doc});existing.total=countSpans(doc);existing.title=doc.title;await Store.put('meta',existing);if(st){st.pos=0;await Store.put('state',st)}}
+    if(old&&(old.doc.v||0)<doc.v&&!marks){await Store.put('docs',{id,doc});existing.total=countSpans(doc);existing.chars=docChars(doc);existing.title=doc.title;await Store.put('meta',existing);if(st){st.pos=0;await Store.put('state',st)}}
   }
   if(existing){await openPaper(id);setStatus('You’ve opened this paper before, so your place, highlights and notes are back.');await claimFromReading();return}
   const now=Date.now();
   await Store.put('docs',{id,doc});
   await Store.put('state',blankState(id));
-  await Store.put('meta',{id,title:doc.title,label:info.label,sample:!!info.sample,addedAt:now,openedAt:now,total:countSpans(doc)});
+  await Store.put('meta',{id,title:doc.title,label:info.label,sample:!!info.sample,addedAt:now,openedAt:now,total:countSpans(doc),chars:docChars(doc)});
   await openPaper(id,{fresh:!info.sample});
   if(!info.sample) await claimFromReading();
 }
@@ -2820,13 +2993,14 @@ async function openFile(f){
       setStatus('Opening '+f.name+'…',false,true);
       const buf=new Uint8Array(await f.arrayBuffer());
       const {pages,meta,pdf}=await extractPdf(buf,(p,n)=>setStatus('Reading page '+p+' of '+n+'…',false,true));
-      let doc=pdfToDoc(pages,meta,f.name);
+      let labels=null;try{labels=await pdf.getPageLabels()}catch(_){}
+      let doc=pdfToDoc(pages,meta,f.name,{labels});
       if(!doc&&pages.reduce((a,p)=>a+p.items.length,0)<40){
         // a scanned PDF: recognize the text in the page images (once; the result is saved)
         let scanned=null;
         try{scanned=await ocrPdf(pdf,(p,n,pct)=>setStatus('This PDF is a scan, so the app is recognizing its text: page '+p+' of '+n+(pct?' ('+pct+'%)':'')+'… This only happens once.',false,true))}
         catch(e){try{pdf.destroy()}catch(_){}setStatus('This PDF is a scanned image, and the text recognizer couldn’t start here ('+(e&&e.message||'unknown problem')+'). Try opening it in the app at mercury-mind.github.io/paper-out-loud.',true);return}
-        doc=scanned?pdfToDoc(scanned,meta,f.name,{ocr:true}):null;
+        doc=scanned?pdfToDoc(scanned,meta,f.name,{ocr:true,labels}):null;
         if(doc) doc.stats.ocr=true;
       }
       if(doc){
@@ -2881,6 +3055,7 @@ $('#pasteGo').onclick=async()=>{
   $('#pastePanel').hidden=true;$('#pasteArea').value='';
   await addPaper('p:'+hashStr(t),parsePlainText(t),{label:'Pasted text'});
 };
+$('#sampleBtn').onclick=()=>addPaper('sample',parsePlainText(SAMPLE),{label:'Sample paper',sample:true});
 $('#playBtn').onclick=toggle;
 $('#nextS').onclick=()=>go(idx+1);
 $('#prevS').onclick=()=>go(idx-1);
@@ -2888,9 +3063,34 @@ $('#hlBtn').onclick=()=>{const e=queue[idx];if(e)toggleHl(e.dataset.n,true)};
 $('#noteBtn').onclick=()=>{const e=queue[idx];if(e)openNote(e.dataset.n)};
 $('#seek').addEventListener('input',e=>{idx=+e.target.value;mark(true)});
 $('#seek').addEventListener('change',e=>go(+e.target.value));
-const rateEl=$('#rate');rateEl.value=rate;$('#rateOut').textContent=rate.toFixed(1)+'×';
-rateEl.addEventListener('input',()=>{rate=+rateEl.value;$('#rateOut').textContent=rate.toFixed(1)+'×'});
-rateEl.addEventListener('change',()=>{saveSettings();if(playing)restart();else mark(false)});
+const rateEl=$('#rate');rateEl.value=rate;$('#rateOut').textContent=rate.toFixed(1)+'×';$('#speedVal').textContent=fmtRate(rate);
+rateEl.addEventListener('input',()=>{rate=+rateEl.value;$('#rateOut').textContent=rate.toFixed(1)+'×';$('#speedVal').textContent=fmtRate(rate)});
+// speed menu on the player: the control people change most, one tap away
+const SPEEDS=[0.8,1,1.2,1.4,1.6,1.8,2];
+function fmtRate(r){return (Math.round(r*100)/100).toString().replace(/^(\d)$/,'$1.0')+'×'}
+function setRate(r){
+  rate=r;rateEl.value=r;$('#rateOut').textContent=r.toFixed(1)+'×';$('#speedVal').textContent=fmtRate(r);
+  saveSettings();if(playing)restart();else mark(false);renderPlanCard();
+}
+function openSpeedMenu(){
+  const m=$('#speedMenu');m.innerHTML='';
+  m.append(el('p','spm-h','Reading speed'));
+  const near=SPEEDS.reduce((a,b)=>Math.abs(b-rate)<Math.abs(a-rate)?b:a);
+  for(const v of SPEEDS){
+    const b=el('button','spm-o',fmtRate(v)+(v===1?'  normal':''));b.type='button';b.setAttribute('role','menuitemradio');b.setAttribute('aria-checked',v===near?'true':'false');
+    b.onclick=()=>{closeSpeedMenu();setRate(v);setStatus('Speed '+fmtRate(v)+'.');$('#speedBtn').focus()};m.append(b);
+  }
+  m.hidden=false;$('#speedBtn').setAttribute('aria-expanded','true');
+  const r=$('#speedBtn').getBoundingClientRect(),w=m.offsetWidth,h=m.offsetHeight;
+  m.style.left=Math.max(8,Math.min(innerWidth-w-8,r.left+r.width/2-w/2))+'px';m.style.top=Math.max(8,r.top-h-10)+'px';
+  (m.querySelector('[aria-checked="true"]')||m.querySelector('button')).focus();
+}
+function closeSpeedMenu(){$('#speedMenu').hidden=true;$('#speedBtn').setAttribute('aria-expanded','false')}
+$('#speedBtn').onclick=e=>{e.stopPropagation();$('#speedMenu').hidden?openSpeedMenu():closeSpeedMenu()};
+document.addEventListener('click',e=>{if(!$('#speedMenu').hidden&&!e.target.closest('#speedMenu,#speedBtn'))closeSpeedMenu()});
+$('#speedMenu').addEventListener('keydown',e=>{const bs=[...$$('#speedMenu button')],i=bs.indexOf(document.activeElement);
+  if(e.key==='ArrowDown'){e.preventDefault();bs[Math.min(bs.length-1,i+1)].focus()}else if(e.key==='ArrowUp'){e.preventDefault();bs[Math.max(0,i-1)].focus()}});
+rateEl.addEventListener('change',()=>{saveSettings();if(playing)restart();else mark(false);renderPlanCard()});
 $('#voice').onchange=e=>{voice=voices[+e.target.value];updateStar();saveSettings();if(playing)restart()};
 $('#voiceStar').onclick=()=>{if(!voice)return;if(favs.has(voice.name))favs.delete(voice.name);else favs.add(voice.name);saveSettings();renderVoiceSelect();setStatus(favs.has(voice.name)?niceVoice(voice)+' added to your favorite voices.':niceVoice(voice)+' removed from your favorite voices.')};
 $('#voiceTest').onclick=()=>{
@@ -2911,6 +3111,7 @@ $('#pBigger').onclick=()=>changeFs(2);$('#pSmaller').onclick=()=>changeFs(-2);
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
+    if(!$('#speedMenu').hidden){closeSpeedMenu();$('#speedBtn').focus();return}
     if(!$('#backupMenu').hidden){closeBackupMenu();$('#backupMenuBtn').focus();return}
     if(rangeStart){cancelPicking();setStatus('');return}
     if(!$('#zoom').hidden){closeZoom();return}
@@ -2928,6 +3129,8 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='ArrowLeft'){e.preventDefault();go(idx-1)}
   else if(e.key===']') nextSec();
   else if(e.key==='[') prevSec();
+  else if(e.key==='+'||e.key==='='){const v=SPEEDS.find(x=>x>rate+0.01);if(v){setRate(v);setStatus('Speed '+fmtRate(v)+'.')}}
+  else if(e.key==='-'||e.key==='_'){const v=[...SPEEDS].reverse().find(x=>x<rate-0.01);if(v){setRate(v);setStatus('Speed '+fmtRate(v)+'.')}}
   else if(e.key==='h'||e.key==='H'){const q=queue[idx];if(q)toggleHl(q.dataset.n,true)}
   else if(e.key==='p'||e.key==='P'){e.preventDefault();$('#pad').hidden?openPad():closePad()}
   else if(e.key==='n'||e.key==='N'){const q=queue[idx];if(q){e.preventDefault();openNote(q.dataset.n)}}
@@ -2966,12 +3169,6 @@ document.addEventListener('visibilitychange',()=>{
   idb=await openIdb();
   if(idb){try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{})}catch(e){}}
   const metas=await Store.all('meta');
-  if(!metas.length&&!store.get('pol-seeded',false)){
-    store.set('pol-seeded',true);
-    await addPaper('sample',parsePlainText(SAMPLE),{label:'Sample paper',sample:true});
-    if(!idb) storageProblem();
-    return;
-  }
   if(!idb) storageProblem();
   if(metas.length){
     metas.sort((a,b)=>(b.openedAt||0)-(a.openedAt||0));
