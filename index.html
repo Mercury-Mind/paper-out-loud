@@ -1063,10 +1063,14 @@ function pdfToDoc(pages,meta,fileName,opt){
   const split=pages.some(q=>q.dx);
   pageLabel=pi=>{if(pOff!=null) return String(pi+1+pOff);if(split) return String(pi+1); // book spreads: count the book pages
     const src=pages[pi].src!=null?pages[pi].src:pi;const lb=opt.labels&&opt.labels[src];return lb&&String(lb).trim()?String(lb).trim():String(src+1)};
+  const sz0=[];pages.forEach(pg=>pg.lines.forEach(l=>sz0.push(l.size)));sz0.sort((a,b)=>a-b);const body0=sz0[sz0.length>>1]||10;
+  const hcount=new Map();
+  if(opt.ocr) pages.forEach((pg,pi)=>{const seen=new Set();pg.lines.forEach(l=>{if(edgeOf(l,pi)&&l.text.length<80){const k=head2(l);if(k.length>=5&&!seen.has(k)){seen.add(k);hcount.set(k,(hcount.get(k)||0)+1)}}})});
   pages.forEach((pg,pi)=>{pg.lines=pg.lines.filter(l=>{
+    if(opt.ocr&&n>=4&&edgeOf(l,pi)&&l.text.length<80&&l.size<=body0*1.25&&(hcount.get(head2(l))||0)>=Math.max(3,n*0.2)){st.headers++;return false}
     if(n<3&&l.y>l.h*0.9&&l.text.length<60&&outer(l,pg)&&[...(textPages.get(key(l))||[])].some(q=>q!==pi)){st.headers++;return false}
     // on a scan, marks in the margin can get read into the header, so compare only its first words
-    if(opt.ocr&&outer(l,pg)&&l.text.length<80){const hk=head2(l);if(hk.length>=7&&pages.some((q,qi)=>qi!==pi&&q.lines.some(m=>outer(m,q)&&head2(m)===hk&&m.size>=l.size*0.8))){st.headers++;return false}}
+    if(opt.ocr&&outer(l,pg)&&l.text.length<80){const hk=head2(l);if(hk.length>=7&&pages.some((q,qi)=>qi!==pi&&q.lines.some(m=>outer(m,q)&&head2(m)===hk&&m.size>=l.size*0.9&&m.size<=l.size*1.12))){st.headers++;return false}}
     if(/^(?:page\s*)?\d{1,4}(?:\s*(?:of|\/)\s*\d{1,4})?$/i.test(l.text)){st.headers++;return false}
     if(n>=3 && edge(l) && cnt.get(key(l))>=thresh){st.headers++;return false}
     return true;
@@ -1077,6 +1081,22 @@ function pdfToDoc(pages,meta,fileName,opt){
     if(l.y<l.h*0.22 && l.size<body*0.87 && /[A-Za-z]{3}/.test(l.text) && (l.text.match(/\d/g)||[]).length<l.text.length*0.2 && !/[±=]/.test(l.text)){st.foot=(st.foot||0)+1;return false}
     return true;
   })});
+  if(opt.ocr) pages.forEach((pg,pi)=>{
+    const ys=pg.lines.map(l=>l.y);if(!ys.length)return;const lo=Math.min(...ys),hi=Math.max(...ys);
+    const cols=new Set(pg.lines.map(l=>l.col));
+    for(const c of cols){
+      const ls=pg.lines.filter(l=>l.col===c||l.col==='F').sort((a,b)=>b.y-a.y);
+      // the usual space between lines in this column, to spot the extra space above a block of footnotes
+      const gaps=[];for(let k=1;k<ls.length;k++){const g=ls[k-1].y-ls[k].y;if(g>0&&g<ls[k].size*3)gaps.push(g)}gaps.sort((x,y)=>x-y);const lead=gaps[gaps.length>>1]||body*1.2;
+      // a note number followed by a capitalised word, on a full line of text (not a numbered heading like "2 Methods")
+      const start=ls.find((l,k)=>l.y<lo+(hi-lo)*0.45&&l.text.length>=40&&!NUMHEAD_RE.test(l.text)&&!HEAD_RE.test(l.text)&&
+        /^["“'‘’*]?\d{1,3}(?!\d)[\]\).:;,’'"“”*?]{0,2}\s?["“‘'(]?[A-Z]/.test(l.text)&&
+        (l.size<body*0.9||(k>0&&ls[k-1].y-l.y>lead*1.35)||/^["“'‘’*]?\d{1,3}[A-Z][a-z]/.test(l.text))); // "46In most…": a note number stuck to its first word
+      if(!start)continue;
+      const drop=new Set(ls.filter(l=>l.y<=start.y+1&&(l.col===c)&&l.size<body*1.05));drop.add(start);
+      pg.lines=pg.lines.filter(l=>{if(drop.has(l)){st.foot=(st.foot||0)+1;return false}return true});
+    }
+  });
   const all=[].concat(...pages.map(p=>p.lines));
   all.forEach(l=>{if(l.text.includes('\uFFFC'))l.text=fixLig(l.text)});
   const totalChars=all.reduce((a,l)=>a+l.text.length,0);
@@ -1096,7 +1116,7 @@ function pdfToDoc(pages,meta,fileName,opt){
       if(l.between && (words>=2||/^[A-Z][a-z]{3,}$/.test(t)) && words<=8 && !/\d/.test(t) && !/[.,;:]$/.test(t) && l.right<l.colRight-(l.colRight-l.x)*0.3 && !/^(?:[A-Z]\.\s*)+[A-Z]/.test(t) && (t.match(/\b[A-Z]/g)||[]).length>=Math.ceil(words/2)) return true;
       if(l.size>=body*1.3 && words>=2 && words<=14 && !/[,;.]$/.test(t)) return true;
       // on a two-column page, a short capitalised line running across both columns is a title or heading
-      if(l.twoPage && l.col==='F' && words>=2 && words<=10 && !/[.,;:]$/.test(t) && /^[A-Z]/.test(t) && !/^(?:[A-Z]\.\s*)+[A-Z]/.test(t) && (t.match(/\b[A-Z]/g)||[]).length>=Math.ceil(words/2)) return true;
+      if(l.twoPage && l.col==='F' && words>=2 && words<=10 && !/[.,;]$/.test(t) && /^[A-Z]/.test(t) && !/^(?:[A-Z]\.\s*)+[A-Z]/.test(t) && (t.match(/\b[A-Z]/g)||[]).length>=Math.ceil(words/2)) return true;
     }
     else if(l.size>=body*1.15 && words<=20 && !/[,;]$/.test(t)) return true;
     if(NUMHEAD_RE.test(t) && words<=9 && !/[.,;]$/.test(t) && l.right<l.colRight-(l.colRight-l.x)*0.25) return true;
@@ -1206,9 +1226,18 @@ function pdfToDoc(pages,meta,fileName,opt){
   for(let i=0;i<blocks.length;i++){
     const b=blocks[i];
     if(b.type==='heading' && (HEAD_RE.test(b.text))) break;
-    if(b.type==='heading' && b.page===0 && b.size>best){best=b.size;ti=i;}
+    const firstSheet=b.page===0||(pages[b.page]&&pages[b.page].src===0&&pages[b.page].dx>0);
+    if(b.type==='heading' && firstSheet && b.size>best){best=b.size;ti=i;}
   }
-  if(ti>=0){title=blocks[ti].text;blocks.splice(ti,1);}
+  if(ti>=0){
+    title=blocks[ti].text;
+    // a subtitle set right under the title ("Whose Education for All?" / "The Recolonization of the African Mind")
+    const nb=blocks[ti+1],tl=blocks[ti].lines&&blocks[ti].lines[blocks[ti].lines.length-1];
+    if(nb&&nb.type==='heading'&&nb.page===blocks[ti].page&&!HEAD_RE.test(nb.text)&&!NUMHEAD_RE.test(nb.text)&&nb.size>=best*0.6&&nb.size>=body*1.3&&nb.text.length<120&&!/\b\p{Lu}\.\s|^by\s|@|\b(?:University|Institute|College|Department)\b/iu.test(nb.text)&&tl&&nb.lines&&tl.y-nb.lines[0].y<best*3.5){
+      title+=(/[?:!.]$/.test(title)?' ':': ')+nb.text;blocks.splice(ti+1,1);
+    }
+    blocks.splice(ti,1);
+  }
   if(!title && meta && meta.length>8 && !/^(untitled|microsoft word)/i.test(meta)) title=meta;
   const doc=buildDoc(title||fileName.replace(/\.pdf$/i,''),blocks,st);doc.body=body;return doc;
 }
@@ -1652,7 +1681,7 @@ function render(){
   const head=$('#docHead'),body=$('#docBody');head.innerHTML='';body.innerHTML='';
   head.append(el('p','eyebrow'+(meta.sample?' sample':''),meta.sample?'Sample paper, invented to show how this works':meta.label));
   head.append(el('h1','doc-title',doc.title));
-  if(doc.stats&&doc.stats.ocr) head.append(el('p','scan-note','This paper is a scan, so its text was recognized automatically and may contain a few mistakes. Pictures, equations and handwriting are shown but not read.'));
+  if(doc.stats&&doc.stats.ocr){const sk=doc.stats.ocrSkipped||[];head.append(el('p','scan-note','This paper is a scan, so its text was recognized automatically and may contain a few mistakes. Pictures, equations and handwriting are shown but not read.'+(sk.length?' '+(sk.length===1?'Page '+sk[0]+' couldn’t be read and is left out.':'Pages '+sk.join(', ')+' couldn’t be read and are left out.'):'')))}
   const s=doc.stats;const chips=[];
   if(s.cite) chips.push(plural(s.cite,'citation'));
   if(s.fig) chips.push(plural(s.fig,'figure pointer'));
@@ -2656,6 +2685,7 @@ function loadTesseract(){
 }
 // The recognizer looks for its English data in its browser cache before downloading it, so put it there
 // from a text copy (plain text files can be hosted anywhere this app is, unlike .gz files)
+const OCR_CACHE='fast1'; // the text recognition model (Tesseract's fast English model); change to replace it on devices
 function seedTessCache(base){
   return new Promise(resolve=>{
     let req;try{req=indexedDB.open('keyval-store')}catch(e){resolve();return}
@@ -2664,20 +2694,20 @@ function seedTessCache(base){
     req.onsuccess=async()=>{
       const db=req.result;
       if(!db.objectStoreNames.contains('keyval')){db.close();resolve();return}
-      const has=await new Promise(r=>{try{const g=db.transaction('keyval').objectStore('keyval').get('./eng.traineddata');g.onsuccess=()=>r(!!g.result);g.onerror=()=>r(false)}catch(e){r(false)}});
+      const has=await new Promise(r=>{try{const g=db.transaction('keyval').objectStore('keyval').get(OCR_CACHE+'/eng.traineddata');g.onsuccess=()=>r(!!g.result);g.onerror=()=>r(false)}catch(e){r(false)}});
       if(has){db.close();resolve();return}
       try{
         const b64=await (await fetch(base+'eng.traineddata.gz.b64.txt')).text();
         const bin=atob(b64.trim());const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
-        await new Promise(r=>{const t=db.transaction('keyval','readwrite');t.objectStore('keyval').put(bytes,'./eng.traineddata');t.oncomplete=r;t.onerror=r;t.onabort=r});
+        await new Promise(r=>{const t=db.transaction('keyval','readwrite');t.objectStore('keyval').put(bytes,OCR_CACHE+'/eng.traineddata');t.oncomplete=r;t.onerror=r;t.onabort=r});
       }catch(e){}
       db.close();resolve();
     };
   });
 }
 // words Tesseract is reasonably sure of, in canvas pixels
-function ocrWords(data,lineBase){
-  const out=[];let li=lineBase||0;
+function ocrWords(data,lineBase,dx,dy){
+  const out=[];let li=lineBase||0;dx=dx||0;dy=dy||0;
   for(const blk of (data.blocks||[])) for(const par of (blk.paragraphs||[])) for(const line of (par.lines||[])){
     li++;
     if(line.confidence<50) continue; // handwriting, stamps and speckles
@@ -2690,7 +2720,7 @@ function ocrWords(data,lineBase){
       if(!t||w.confidence<15) continue;
       if(t.length<=3&&w.confidence<50) continue; // specks read as letters
       if(/^[|_¥:;.,'"`~=\[\]{}()\u2014\u2013-]+$/.test(t)) continue; // rules, bars and dots
-      out.push({t,x0:w.bbox.x0,x1:w.bbox.x1,y0:w.bbox.y0,y1:w.bbox.y1,bl,lh,line:li});
+      out.push({t,x0:w.bbox.x0+dx,x1:w.bbox.x1+dx,y0:w.bbox.y0+dy,y1:w.bbox.y1+dy,bl:bl+dy,lh,line:li});
     }
   }
   return out;
@@ -2742,65 +2772,259 @@ function flattenScan(cv){
   }
   ctx.putImageData(img,0,0);
 }
-async function ocrCanvas(worker,cv){
-  const opts={rotateAuto:true},out={blocks:true,text:false,hocr:false,tsv:false};
-  const {data}=await worker.recognize(cv,opts,out);
-  const words=ocrWords(data);
-  const cols=ocrColumns(words,0,cv.width,2);
+// ---------- page layout from the image itself, before any text recognition ----------
+// A small grayscale copy of a canvas (for fast measuring), with its scale.
+function smallGray(cv,maxDim){
+  const s=Math.min(1,maxDim/Math.max(cv.width,cv.height)),w=Math.max(1,Math.round(cv.width*s)),h=Math.max(1,Math.round(cv.height*s));
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const x=c.getContext('2d',{willReadFrequently:true});x.imageSmoothingEnabled=true;x.drawImage(cv,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data,g=new Uint8Array(w*h);
+  for(let i=0,j=0;i<g.length;i++,j+=4) g[i]=(d[j]*77+d[j+1]*150+d[j+2]*29)>>8;
+  // measure each column against its own paper brightness, so a shadow down a book's spine isn't ink
+  const col=new Uint8Array(h);
+  for(let x=0;x<w;x++){
+    for(let y=0;y<h;y++)col[y]=g[y*w+x];
+    const sorted=col.slice().sort(),paper=Math.max(60,sorted[Math.floor(h*0.85)]);
+    if(paper<235)for(let y=0;y<h;y++)g[y*w+x]=Math.min(255,g[y*w+x]*255/paper);
+  }
+  return {g,w,h,s};
+}
+// How far the text lines are tilted, in degrees: the angle at which rows of ink line up best.
+function skewAngle(sg){
+  const {g,w,h}=sg,xs=[],ys=[];
+  for(let y=Math.round(h*0.08);y<h*0.92;y+=1)for(let x=Math.round(w*0.08);x<w*0.92;x+=2)if(g[y*w+x]<140){xs.push(x-w/2);ys.push(y)}
+  if(xs.length<500) return 0;
+  const score=a=>{const t=Math.tan(a*Math.PI/180),rows=new Float32Array(h+w);let s=0;
+    for(let i=0;i<xs.length;i++){const r=Math.round(ys[i]+xs[i]*t+w/2);if(r>=0&&r<rows.length)rows[r]++}
+    for(let i=0;i<rows.length;i++)s+=rows[i]*rows[i];return s};
+  let best=0,bs=score(0);
+  for(let a=-4;a<=4.001;a+=0.25){const v=score(a);if(v>bs){bs=v;best=a}}
+  for(let a=best-0.25;a<=best+0.25;a+=0.05){const v=score(a);if(v>bs){bs=v;best=a}}
+  return Math.abs(best)<0.1?0:best;
+}
+// Turn the canvas so the text lines are level.
+function rotateCanvas(cv,deg){
+  const c=document.createElement('canvas');c.width=cv.width;c.height=cv.height;
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);
+  x.translate(c.width/2,c.height/2);x.rotate(deg*Math.PI/180);x.drawImage(cv,-cv.width/2,-cv.height/2);
+  return c;
+}
+// Typical distance between text lines, in small-image pixels (0 if unclear): the first strong repeat in the
+// row-by-row ink profile.
+function linePitch(sg,x0,x1,y0,y1){
+  const {g,w}=sg;y0=y0||0;y1=y1||sg.h;const h=y1-y0,rows=new Float32Array(h);
+  for(let y=0;y<h;y++){let n=0;for(let x=x0;x<x1;x++)if(g[(y0+y)*w+x]<140)n++;rows[y]=n}
+  let mean=0;for(const v of rows)mean+=v;mean/=h||1;
+  const ac=p=>{let s=0;for(let y=0;y+p<h;y++)s+=(rows[y]-mean)*(rows[y+p]-mean);return s/(h-p)};
+  const a0=ac(0);if(!(a0>0)) return 0;
+  let p=1;while(p<h/3&&ac(p)>0)p++;          // past the first dip
+  let best=0,bv=0;for(;p<Math.min(150,h/3);p++){const v=ac(p);if(v>bv){bv=v;best=p}}
+  return bv>a0*0.15?best:0;
+}
+// Split the page into pieces that Tesseract can read without running lines across a gap: a book spread
+// into its pages, a page into its columns. Full-width rows (a title across both columns) stay whole.
+// Returns rectangles in small-image pixels.
+function layoutRects(sg){
+  const {g,w,h}=sg,dark=(x,y)=>g[y*w+x]<140;
+  const out=[];
+  const split=(x0,x1,y0,y1,depth)=>{
+    const span=x1-x0,H=y1-y0;
+    if(depth<=0||span<w*0.2||H<h*0.08){out.push([x0,y0,x1,y1]);return}
+    // for every position, count the pixel rows where a strip about a letter wide is empty with ink on both
+    // sides: a column gap scores on most rows, a word space only now and then
+    // a column gap is at least about a line tall in width; spaces between words or sentences never are
+    const lp=linePitch(sg,x0,x1,y0,y1);
+    const gw=Math.max(4,Math.round(span*0.012),Math.round(lp*0.8)),a=Math.floor(span*0.3),b=Math.ceil(span*0.7)-gw;
+    // look at bands about a line and a half tall: within a band, ink from the whole line counts, so the
+    // sparse tops of tall letters don't look like gaps
+    const bh=Math.max(6,Math.round(h*0.018));
+    const score=new Uint16Array(Math.max(0,b-a+1)),P=new Uint16Array(span+1),colInk=new Uint8Array(span);let inkRows=0;
+    for(let by=y0;by<y1;by+=bh){
+      colInk.fill(0);const be=Math.min(y1,by+bh);
+      for(let y=by;y<be;y++)for(let x=0;x<span;x++)if(dark(x0+x,y))colInk[x]=1;
+      let n=0;for(let x=0;x<span;x++){n+=colInk[x];P[x+1]=n}
+      if(n<3)continue;inkRows++;
+      for(let x=a;x<=b;x++)if(P[x+gw]===P[x]&&P[x]>0&&n>P[x+gw])score[x-a]++;
+    }
+    let top=0;for(const v of score)if(v>top)top=v;
+    let best=null; // below: the part of the gap that is empty on the most lines
+    if(inkRows&&top>=Math.max(4,inkRows*0.3)){
+      let run=null;
+      for(let i=0;i<score.length;i++){if(score[i]>=top*0.97){if(!run)run={a:i,b:i};else run.b=i}else if(run){if(!best||run.b-run.a>best.b-best.a)best=run;run=null}}
+      if(run&&(!best||run.b-run.a>best.b-best.a))best=run;
+      best={a:a+best.a,b:a+best.b+gw-1};
+    } else {
+      // a wide strip that is empty nearly all the way down, with ink on both sides (a book spread whose
+      // facing page holds only a few lines)
+      const col=new Uint32Array(span);let tot=0;
+      const ya=y0+Math.round(H*0.05),yb=y1-Math.round(H*0.05); // edges of a scan often carry marks
+      for(let x=0;x<span;x++){let n=0;for(let y=ya;y<yb;y++)if(dark(x0+x,y))n++;col[x]=n;tot+=n}
+      const lim=Math.max(2,H*0.01),minW=Math.max(gw*2,Math.round(span*0.03)),runs=[];let run=null;
+      for(let i=a;i<=b+gw;i++){if(col[i]<=lim){if(!run)run={a:i,b:i};else run.b=i}else if(run){runs.push(run);run=null}}
+      if(run)runs.push(run);
+      const pre=new Float64Array(span+1);for(let i=0;i<span;i++)pre[i+1]=pre[i]+col[i];
+      for(const r of runs){if(r.b-r.a+1<minW)continue;const l=pre[r.a],rt=tot-pre[r.b+1];if(l<tot*0.03||rt<tot*0.03)continue;if(!best||r.b-r.a>best.b-best.a)best=r}
+      if(!best){out.push([x0,y0,x1,y1]);return}
+    }
+    const ga=x0+best.a,gb=x0+best.b+1,mid=Math.round((ga+gb)/2);
+    // rows where ink crosses the gap belong to full-width lines
+    // ink in the middle of the gap (a pen underline that strays into the gap only touches its edge)
+    const ca=Math.round(ga+(gb-ga)*0.25),cb=Math.max(ca+1,Math.round(gb-(gb-ga)*0.25));
+    const edgeY=Math.round(h*0.04); // scanner edges often carry marks right across the sheet
+    const cross=[];for(let y=y0;y<y1;y++){let c=0;if(y>=edgeY&&y<h-edgeY)for(let x=ca;x<cb;x++)if(dark(x,y))c++;cross.push(c>=2)}
+    // runs of crossing rows tall enough to be a line of text (specks and stray marks don't count)
+    const core=[];for(let y=0;y<cross.length;y++)if(cross[y]){const l=core[core.length-1];if(l&&y<=l[1]+1)l[1]=y;else core.push([y,y])}
+    const pad=Math.max(2,Math.round(h*0.006)),join=Math.round(h*0.025),bands=[];
+    // full-width lines close together (a list running across the page) make one strip
+    for(const [cs,ce] of core){if(ce-cs+1<Math.max(4,h*0.006))continue;const s=Math.max(0,cs-pad),e=Math.min(H,ce+pad+1);const l=bands[bands.length-1];if(l&&s<=l[1]+join)l[1]=Math.max(l[1],e);else bands.push([s,e])}
+    // a strip may only start and end on a blank row, so no line of text is cut in half
+    const rowInk=y=>{for(let x=x0;x<x1;x++)if(dark(x,y))return true;return false};
+    const lim=Math.round(h*0.04);
+    for(const bd of bands){
+      let k=0;while(bd[0]>0&&k<lim&&rowInk(y0+bd[0]-1)){bd[0]--;k++}
+      k=0;while(bd[1]<H&&k<lim&&rowInk(y0+bd[1])){bd[1]++;k++}
+    }
+    for(let i=1;i<bands.length;i++)if(bands[i][0]<=bands[i-1][1]){bands[i-1][1]=Math.max(bands[i-1][1],bands[i][1]);bands.splice(i,1);i--}
+    // lines running across the "gap" over half the height: it's spacing inside text or around a picture
+    if(bands.reduce((n,[s,e])=>n+e-s,0)>H*0.5){out.push([x0,y0,x1,y1]);return}
+    let yy=y0;
+    for(const [s,e] of bands){
+      if(y0+s>yy) {split(x0,mid,yy,y0+s,depth-1);split(mid,x1,yy,y0+s,depth-1)}
+      out.push([x0,y0+s,x1,y0+e]);yy=y0+e;
+    }
+    if(yy<y1){split(x0,mid,yy,y1,depth-1);split(mid,x1,yy,y1,depth-1)}
+  };
+  split(0,w,0,h,2);
+  // drop slivers with no ink (margins between pieces)
+  const inked=out.filter(([x0,y0,x1,y1])=>{if(x1-x0<4||y1-y0<4)return false;let n=0;for(let y=y0;y<y1;y+=2)for(let x=x0;x<x1;x+=2)if(dark(x,y))n++;return n>3});
+  // join pieces stacked directly on top of each other with the same width (runs of full-width lines)
+  inked.sort((p,q)=>p[1]-q[1]||p[0]-q[0]);
+  const merged=[];
+  for(const r of inked){
+    const m=merged.find(q=>q[0]===r[0]&&q[2]===r[2]&&r[1]-q[3]<=h*0.03&&!inked.some(o=>o!==r&&o!==q&&o[1]<r[1]&&o[3]>q[3]&&o[0]<r[2]&&o[2]>r[0]));
+    if(m) m[3]=Math.max(m[3],r[3]); else merged.push(r.slice());
+  }
+  return merged;
+}
+// Tesseract sometimes runs a line of one column into the next when a page wasn't split into columns
+// beforehand; if that happened, read each column on its own (a safety net; layoutRects usually prevents it)
+async function rereadColumns(sch,cv,words,rect){
+  const cols=ocrColumns(words,rect.left,rect.left+rect.width,2);
   if(cols.length<2) return words;
-  // Tesseract sometimes runs a line of one column into the next when their lines don't sit at the same
-  // height, and then misreads or drops words. If that happened, read each column on its own.
   const colOf=x=>cols.findIndex(c=>x>=c[0]&&x<c[1]);
   const byLine=new Map();for(const w of words){if(!byLine.has(w.line))byLine.set(w.line,[]);byLine.get(w.line).push(w)}
   const wide=[];let merged=0;
   for(const ws of byLine.values()){
-    if(ws.some(w=>cols.some((c,i)=>i>0&&w.x0<c[0]-2&&w.x1>c[0]+2))){wide.push(ws);continue} // a word right across a gap (a centred heading)
+    if(ws.some(w=>cols.some((c,i)=>i>0&&w.x0<c[0]-2&&w.x1>c[0]+2))){wide.push(ws);continue}
     if(new Set(ws.map(w=>colOf((w.x0+w.x1)/2))).size<2) continue;
     let gap=Infinity;
     for(let i=1;i<cols.length;i++){const L=ws.filter(w=>(w.x0+w.x1)/2<cols[i][0]),R=ws.filter(w=>(w.x0+w.x1)/2>=cols[i][0]);if(L.length&&R.length)gap=Math.min(gap,Math.min(...R.map(w=>w.x0))-Math.max(...L.map(w=>w.x1)))}
     if(gap<ws[0].lh*0.9) wide.push(ws); else merged++;
   }
   if(merged<2) return words;
-  const H=cv.height;let parts=[];
-  for(const [a,b] of cols){const l=Math.round(a),r=Math.round(b);parts=parts.concat(ocrWords((await worker.recognize(cv,{...opts,rectangle:{left:l,top:0,width:r-l,height:H}},out)).data,1e5*(parts.length+1)))}
-  // keep full-width lines (titles running across a gap) from the first reading
+  const parts=await Promise.all(cols.map(([a,b],k)=>{const l=Math.round(a),r=Math.round(b);
+    return readPiece(sch,cv,{left:l,top:rect.top,width:r-l,height:rect.height},9e5+1e5*k)}));
   const boxes=wide.map(ws=>({x0:Math.min(...ws.map(w=>w.x0)),x1:Math.max(...ws.map(w=>w.x1)),y0:Math.min(...ws.map(w=>w.y0)),y1:Math.max(...ws.map(w=>w.y1))}));
   const inWide=w=>boxes.some(b=>w.x1>b.x0&&w.x0<b.x1&&(w.y0+w.y1)/2>b.y0&&(w.y0+w.y1)/2<b.y1);
-  return wide.flat().concat(parts.filter(w=>!inWide(w)));
+  return wide.flat().concat(parts.flat().filter(w=>!inWide(w)));
 }
-async function ocrPdf(pdf,onProgress){
+const OCR_OUT={blocks:true,text:false,hocr:false,tsv:false};
+function cutOut(cv,r){const c=document.createElement('canvas');c.width=Math.max(1,r.width);c.height=Math.max(1,r.height);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(cv,r.left,r.top,r.width,r.height,0,0,r.width,r.height);return c}
+function meanConf(data){let s=0,n=0;for(const b of (data.blocks||[]))for(const p of (b.paragraphs||[]))for(const l of (p.lines||[])){const c=(l.text||'').trim().length;s+=l.confidence*c;n+=c}return n?s/n:0}
+function readPiece(sch,cv,r,lineBase){const c=cutOut(cv,r);return sch.addJob('recognize',c,{},OCR_OUT).then(x=>{c.width=c.height=0;const ws=ocrWords(x.data,lineBase,r.left,r.top);ws.conf=meanConf(x.data);ws.chars=ws.reduce((a,w)=>a+w.t.length,0);return ws})}
+// Draw one PDF page as an image ready for recognition: shadows evened out, tilt straightened, and the
+// resolution chosen so text lines are a comfortable size for the recognizer.
+async function preparePage(pdf,p,maxPx,rot){
+  const page=await pdf.getPage(p),rotation=((page.rotate||0)+(rot||0))%360,vp1=page.getViewport({scale:1,rotation});
+  const draw=async scale=>{const vp=page.getViewport({scale,rotation});const cv=document.createElement('canvas');cv.width=Math.ceil(vp.width);cv.height=Math.ceil(vp.height);
+    const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);await page.render({canvasContext:ctx,viewport:vp}).promise;return cv};
+  let scale=Math.min(4.5,maxPx/Math.max(vp1.width,vp1.height)),cv=await draw(scale);
+  try{flattenScan(cv)}catch(_){}
+  let sg=smallGray(cv,1400);
+  // text much smaller or larger than the recognizer likes: draw the page again at a better size
+  const pitch=linePitch(sg,0,sg.w,0,sg.h)/sg.s;
+  let f=1;if(pitch>0&&pitch<30)f=Math.min(1.7,40/pitch);else if(pitch>90)f=Math.max(0.55,55/pitch);
+  const s2=Math.min(4.5,scale*f,4200/Math.max(vp1.width,vp1.height));
+  if(Math.abs(s2-scale)/scale>0.15){cv.width=cv.height=0;scale=s2;cv=await draw(scale);try{flattenScan(cv)}catch(_){}sg=smallGray(cv,1400)}
+  const ang=skewAngle(sg);
+  if(ang){const r=rotateCanvas(cv,ang);cv.width=cv.height=0;cv=r;sg=smallGray(cv,1400)}
+  const rects=layoutRects(sg).map(([a,b,c,d])=>{const l=Math.max(0,Math.floor(a/sg.s)-2),t=Math.max(0,Math.floor(b/sg.s)-2);
+    return {left:l,top:t,width:Math.min(cv.width-l,Math.ceil((c-a)/sg.s)+4),height:Math.min(cv.height-t,Math.ceil((d-b)/sg.s)+4)}});
+  page.cleanup();
+  return {cv,scale,rot:rot||0,w:vp1.width,h:vp1.height,rects:rects.length?rects:[{left:0,top:0,width:cv.width,height:cv.height}]};
+}
+async function readPrepared(sch,pp){
+  const res=await Promise.all(pp.rects.map((r,k)=>readPiece(sch,pp.cv,r,1e5*(k+1)).then(words=>({k,r,words}))));
+  let cs=0,cn=0;for(const {words:ws} of res){cs+=ws.conf*ws.chars;cn+=ws.chars}
+  let words=[];
+  for(const {r,words:ws} of res) words=words.concat(pp.rects.length===1?await rereadColumns(sch,pp.cv,ws,r):ws);
+  const items=[];
+  for(const w of words){
+    const size=Math.max(5,w.lh/pp.scale*0.78);
+    // positions as the page is shown (a sideways-stored scan stays upright), with y measured up from the bottom
+    items.push({str:w.t,x:w.x0/pp.scale,y:pp.h-w.bl/pp.scale,w:Math.max(1,(w.x1-w.x0)/pp.scale),size,pua:null,lig:false});
+  }
+  return {w:pp.w,h:pp.h,items,disp:true,conf:cn?cs/cn:0,chars:cn};
+}
+// a page scanned sideways or upside down reads as gibberish: try the other turns on a quick, small copy
+async function bestTurn(sch,pdf,p,now){
+  let best={rot:0,conf:now};
+  for(const rot of [180,90,270]){
+    const pp=await preparePage(pdf,p,1500,rot);
+    const big=pp.rects.reduce((a,r)=>r.width*r.height>a.width*a.height?r:a,pp.rects[0]);
+    const ws=await readPiece(sch,pp.cv,big,0);pp.cv.width=pp.cv.height=0;
+    if(ws.chars>40&&ws.conf>best.conf+15) best={rot,conf:ws.conf};
+  }
+  return best.rot;
+}
+// pages already recognized are kept, so a closed tab or a crash picks up where it stopped
+const ocrCacheGet=key=>key?Store.get('state','ocr:'+key).catch(()=>null):Promise.resolve(null);
+const ocrCachePut=(key,v)=>key?Store.put('state',Object.assign({id:'ocr:'+key},v)).catch(()=>{}):null;
+async function ocrPdf(pdf,onProgress,key){
   await loadTesseract();
   const base=new URL('ocr/',location.href).href;
   await seedTessCache(base);
-  let curPage=1;
-  const worker=await Tesseract.createWorker('eng',1,{
-    workerPath:base+'worker.min.js',corePath:base,langPath:base,workerBlobURL:false,gzip:true,
-    logger:m=>{if(m.status==='recognizing text'&&m.progress)onProgress(curPage,pdf.numPages,Math.round(m.progress*100))},
-    errorHandler:()=>{}
-  });
-  const pages=[];
+  // several recognizers at once on computers and phones with more cores and memory
+  const cores=navigator.hardwareConcurrency||2,mem=navigator.deviceMemory||4;
+  const nW=Math.max(1,Math.min(4,cores-1,mem<=2?1:mem<=4?2:4));
+  const mkWorker=()=>Tesseract.createWorker('eng',1,{workerPath:base+'worker.min.js',corePath:base,langPath:base,cachePath:OCR_CACHE,workerBlobURL:false,gzip:true,errorHandler:()=>{}});
+  const mkSched=async()=>{const s=Tesseract.createScheduler();const ws=await Promise.all(Array.from({length:nW},mkWorker));ws.forEach(w=>s.addWorker(w));return s};
+  let sch=await mkSched();
+  const N=pdf.numPages,cache=(await ocrCacheGet(key))||{pages:{}},pages=[],skipped=[],times=[];
+  const eta=p=>{const done=times.length;if(!done)return 0;const avg=times.reduce((a,b)=>a+b,0)/done;return Math.round(avg*(N-p+1)/1000)};
+  const prep=p=>p<=N&&!cache.pages[p]?preparePage(pdf,p,2600).catch(e=>({err:e})):Promise.resolve(null);
   try{
-    for(let p=1;p<=pdf.numPages;p++){
-      curPage=p;onProgress(p,pdf.numPages,0);
-      const page=await pdf.getPage(p);const vp1=page.getViewport({scale:1});
-      const scale=Math.min(4.5,(vp1.width>vp1.height*1.15?3600:2600)/Math.max(vp1.width,vp1.height)); // a landscape sheet may hold two book pages
-      const vp=page.getViewport({scale});
-      const cv=document.createElement('canvas');cv.width=Math.ceil(vp.width);cv.height=Math.ceil(vp.height);
-      const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);
-      await page.render({canvasContext:ctx,viewport:vp}).promise;
-      try{flattenScan(cv)}catch(_){}
-      const words=await ocrCanvas(worker,cv);
-      const items=[];
-      for(const w of words){
-        const size=Math.max(5,w.lh/scale*0.78);
-        // positions as the page is shown (a sideways-stored scan stays upright), with y measured up from the bottom
-        const x=w.x0/scale,y=vp1.height-w.bl/scale;
-        items.push({str:w.t,x,y,w:Math.max(1,(w.x1-w.x0)/scale),size,pua:null,lig:false});
+    let next=prep(1);
+    for(let p=1;p<=N;p++){
+      if(cache.pages[p]){pages.push(cache.pages[p]);next=prep(p+1);continue}
+      onProgress(p,N,eta(p));
+      const t0=Date.now();
+      let pp=await next;next=prep(p+1); // draw the next page while this one is read
+      let page=null;
+      for(let attempt=0;attempt<2&&!page;attempt++){
+        try{
+          if(!pp||pp.err) pp=await preparePage(pdf,p,attempt?1800:2600);
+          // never wait forever: a page that takes far longer than usual is retried once at a lower resolution
+          const limit=Math.max(60000,(times.length?Math.max(...times):20000)*4);
+          let timer;
+          page=await Promise.race([readPrepared(sch,pp),new Promise((_,rej)=>{timer=setTimeout(()=>rej(new Error('timeout')),limit)})]).finally(()=>clearTimeout(timer));
+        }catch(e){
+          try{await sch.terminate()}catch(_){}
+          sch=await mkSched();
+          if(pp&&pp.cv)pp.cv.width=pp.cv.height=0;pp=null;
+        }
       }
-      pages.push({w:vp1.width,h:vp1.height,items,disp:true});
-      page.cleanup();cv.width=cv.height=0;
+      if(pp&&pp.cv)pp.cv.width=pp.cv.height=0;
+      if(page&&page.conf<55&&page.chars>40){ // mostly unreadable: maybe the page is turned
+        try{const rot=await bestTurn(sch,pdf,p,page.conf);
+          if(rot){const pp2=await preparePage(pdf,p,2600,rot);const pg2=await readPrepared(sch,pp2);pp2.cv.width=pp2.cv.height=0;if(pg2.conf>page.conf)page=pg2}}catch(_){}
+      }
+      if(!page){skipped.push(p);const pg=await pdf.getPage(p),v=pg.getViewport({scale:1});page={w:v.width,h:v.height,items:[],disp:true}}
+      else{cache.pages[p]=page;ocrCachePut(key,cache)}
+      pages.push(page);times.push(Date.now()-t0);
     }
-  }finally{try{await worker.terminate()}catch(_){}}
+  }finally{try{await sch.terminate()}catch(_){}}
+  pages.skipped=skipped;
   return pages;
 }
 
@@ -2998,10 +3222,11 @@ async function openFile(f){
       if(!doc&&pages.reduce((a,p)=>a+p.items.length,0)<40){
         // a scanned PDF: recognize the text in the page images (once; the result is saved)
         let scanned=null;
-        try{scanned=await ocrPdf(pdf,(p,n,pct)=>setStatus('This PDF is a scan, so the app is recognizing its text: page '+p+' of '+n+(pct?' ('+pct+'%)':'')+'… This only happens once.',false,true))}
+        const ocrKey=f.name+':'+f.size;
+        try{scanned=await ocrPdf(pdf,(p,n,secs)=>setStatus('This PDF is a scan, so the app is recognizing its text: page '+p+' of '+n+(secs>=60?', about '+Math.round(secs/60)+' min left':secs>0?', less than a minute left':'')+'. This only happens once, and if the page is closed it picks up where it stopped.',false,true),ocrKey)}
         catch(e){try{pdf.destroy()}catch(_){}setStatus('This PDF is a scanned image, and the text recognizer couldn’t start here ('+(e&&e.message||'unknown problem')+'). Try opening it in the app at mercury-mind.github.io/paper-out-loud.',true);return}
         doc=scanned?pdfToDoc(scanned,meta,f.name,{ocr:true,labels}):null;
-        if(doc) doc.stats.ocr=true;
+        if(doc){doc.stats.ocr=true;if(scanned.skipped&&scanned.skipped.length)doc.stats.ocrSkipped=scanned.skipped;Store.del('state','ocr:'+ocrKey).catch(()=>{})}
       }
       if(doc){
         try{await cropRegions(pdf,doc,(p,n)=>setStatus('Preparing equations, tables and figures ('+p+' of '+n+')…',false,true))}
