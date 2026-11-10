@@ -119,6 +119,11 @@ button,select,input,textarea{font:inherit;color:inherit}
 .hmenu .fine{padding:4px 14px 8px;font-size:14px}
 .count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:14px;display:inline-grid;place-items:center;font-variant-numeric:tabular-nums}
 /* AI tools appear only where they can run: through the AI relay, or for the owner on the Claude link */
+#dimmer{position:fixed;inset:0;background:#000;z-index:800;opacity:0;pointer-events:none;transition:opacity 1.5s;display:grid;place-content:center;gap:8px;text-align:center;padding:24px;cursor:pointer}
+#dimmer.on{opacity:1;pointer-events:auto}
+#dimmer .d-t{color:#565656;font-size:20px;font-weight:600;max-width:30ch}
+#dimmer .d-s{color:#464646;font-size:16px}
+#dimmer .d-hint{color:#3a3a3a;font-size:14px;margin-top:20px}
 body:not(.ai-on) #aiBtn,body:not(.ai-on) #aiDrawer{display:none!important}
 .sumcard{margin:18px 0 6px;border:1.5px solid var(--accent);border-radius:18px;padding:16px 18px;background:var(--sheet)}
 .sumcard .row{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
@@ -566,7 +571,8 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
     <label class="check"><input type="checkbox" id="optTitles" checked>Read section titles</label>
     <label class="check"><input type="checkbox" id="optCaps" checked>Read figure and table captions at the end</label>
     <label class="check"><input type="checkbox" id="optScroll" checked>Keep the current sentence in view</label>
-    <label class="check"><input type="checkbox" id="optBg" checked>Keep reading when the screen turns off or the app is in the background (adds play and pause controls to the lock screen and headphones)</label>
+    <label class="check"><input type="checkbox" id="optDim">While reading, keep the screen awake but darken it to save battery. Tap to see it again</label>
+    <label class="check"><input type="checkbox" id="optBg" checked>Play, pause and skip from your headphones or the lock screen</label>
   </div>
   <div class="ai-set" id="aiSet">
     <b>AI summaries</b>
@@ -1691,7 +1697,7 @@ function hashStr(s){let h=5381;for(let i=0;i<s.length;i++)h=(h*33)^s.charCodeAt(
 function blankState(id){return {id,pos:0,highlights:{},notes:{},include:{}}}
 
 /* ---------- rendering ---------- */
-const opts={titles:true,eq:true,caps:true,scroll:true,bg:true};
+const opts={titles:true,eq:true,caps:true,scroll:true,bg:true,dim:/Android|iPhone|iPad/i.test(navigator.userAgent)};
 function spanOf(n){return document.querySelector('#docBody .s[data-n="'+n+'"]')}
 function decorate(sp){
   if(!sp) return;
@@ -1930,6 +1936,7 @@ function mark(scroll){
   $('#hlBtn').setAttribute('aria-pressed',cur&&cur.state.highlights[e.dataset.n]?'true':'false');
   updateToc();
   if(cur&&cur.state.pos!==+e.dataset.n){cur.state.pos=+e.dataset.n;scheduleSave()}
+  dimNote();if(playing&&navigator.mediaSession)try{const p=posInfo();navigator.mediaSession.setPositionState&&navigator.mediaSession.setPositionState({duration:p.d,position:Math.min(p.p,p.d),playbackRate:1})}catch(_){}
 }
 function speak(){
   if(!playing) return;
@@ -1985,7 +1992,34 @@ function quietTrack(){
   bgUrl=URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
   return bgUrl;
 }
+let dimT=null,dimEl=null;
+function dim(on){clearTimeout(dimT);dimT=null;if(on&&opts.dim)dimT=setTimeout(showDim,20000);if(!on||!opts.dim)undim()}
+function showDim(){
+  if(!(playing||sumPlaying)||!opts.dim) return;
+  if(!dimEl){
+    dimEl=el('div');dimEl.id='dimmer';dimEl.setAttribute('role','button');
+    dimEl.setAttribute('aria-label','The screen is darkened to save battery while reading aloud. Tap to show it.');
+    dimEl.append(el('div','d-t'),el('div','d-s'),el('div','d-hint','Still reading · tap to see the screen'));
+    dimEl.addEventListener('click',e=>e.preventDefault());
+    document.body.append(dimEl);
+  }
+  dimNote();requestAnimationFrame(()=>dimEl.classList.add('on'));
+}
+function dimNote(){
+  if(!dimEl) return;
+  dimEl.querySelector('.d-t').textContent=cur?cur.doc.title:'';
+  const S=queue[idx]&&queue[idx].closest('.sec');
+  dimEl.querySelector('.d-s').textContent=sumPlaying?'The summary':(S?S.dataset.name:'');
+}
+function undim(){if(dimEl)dimEl.classList.remove('on')}
+['pointerdown','keydown'].forEach(ev=>window.addEventListener(ev,()=>{undim();if(playing||sumPlaying)dim(true)},true));
 function keepAwake(on){
+  // the screen lock is what silences the voice, so hold the screen awake while reading
+  try{
+    if(on){if(navigator.wakeLock&&!lock)navigator.wakeLock.request('screen').then(l=>{lock=l;l.addEventListener('release',()=>{if(lock===l)lock=null})}).catch(()=>{})}
+    else{try{lock&&lock.release()}catch(_){}lock=null}
+  }catch(_){}
+  dim(on);
   on=on&&opts.bg&&PLATFORM!=='ios'; // on iPhones and iPads this would stop the voice instead
   try{
     if(on){
@@ -1995,6 +2029,12 @@ function keepAwake(on){
   }catch(_){}
   mediaInfo();
 }
+let cumQ=null,cum=null;
+function posInfo(){
+  if(cumQ!==queue){cumQ=queue;cum=[0];let t=0;for(const e of queue){t+=sayOf(e).length+1;cum.push(t)}}
+  const sp=CHARS_PER_SEC*rate;
+  return {d:cum[queue.length]/sp,p:(cum[Math.min(idx,queue.length)]||0)/sp};
+}
 function mediaInfo(){
   const ms=navigator.mediaSession;if(!ms) return;
   try{
@@ -2003,6 +2043,10 @@ function mediaInfo(){
       ms.metadata=new MediaMetadata({title:cur.doc.title,artist:sumPlaying?'Summary':(S?S.dataset.name:'Paper Out Loud'),album:'Paper Out Loud'});
     }
     ms.playbackState=(playing||sumPlaying)?'playing':'paused';
+    if(ms.setPositionState){
+      if(playing&&queue.length){const p=posInfo();ms.setPositionState({duration:p.d,position:Math.min(p.p,p.d),playbackRate:1})}
+      else if(!sumPlaying) ms.setPositionState();
+    }
   }catch(_){}
 }
 (function(){
@@ -2031,9 +2075,8 @@ function play(){
   if(!queue.length) return;
   if(idx>=queue.length) idx=0;
   playing=true;fails=0;updatePlay();token++;lastSpeech=Date.now();keepAwake(true);startSpeaking();
-  try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(l=>{lock=l}).catch(()=>{})}catch(_){}
 }
-function pause(){playing=false;token++;if(synth)synth.cancel();updatePlay();if(!sumPlaying)keepAwake(false);try{lock&&lock.release();lock=null}catch(_){}}
+function pause(){playing=false;token++;if(synth)synth.cancel();updatePlay();if(!sumPlaying)keepAwake(false)}
 function restart(){token++;fails=0;mark(true);startSpeaking()}
 function finish(){pause();keepAwake(false);setStatus('Finished reading. Click any sentence to hear it again.')}
 function toggle(){playing?pause():play()}
@@ -2449,7 +2492,7 @@ function applySettingsObj(o){
   if(o.fs) fs=+o.fs;
   applyFs();
   $('#rate').value=rate;$('#rateOut').textContent=rate.toFixed(1)+'×';$('#speedVal').textContent=fmtRate(rate);
-  [['optTitles','titles'],['optCaps','caps'],['optScroll','scroll'],['optBg','bg']].forEach(([id,k])=>{$('#'+id).checked=!!opts[k]});
+  [['optTitles','titles'],['optCaps','caps'],['optScroll','scroll'],['optBg','bg'],['optDim','dim']].forEach(([id,k])=>{$('#'+id).checked=!!opts[k]});
   if(o.voice){saved.voice=o.voice;const i=voices.findIndex(v=>v.name===o.voice);if(i>=0)voice=voices[i]}
   if(voices.length) renderVoiceSelect();
   saveSettings();
@@ -3644,9 +3687,9 @@ $('#voiceTest').onclick=()=>{
 function changeFs(step){fs=Math.min(44,Math.max(16,curFs()+step));applyFs();saveSettings();if(queue[idx])queue[idx].scrollIntoView({block:'center'});setStatus('Text size '+Math.round(curFs())+' px.')}
 $('#bigger').onclick=()=>changeFs(2);$('#smaller').onclick=()=>changeFs(-2);
 $('#pBigger').onclick=()=>changeFs(2);$('#pSmaller').onclick=()=>changeFs(-2);
-[['optTitles','titles'],['optCaps','caps'],['optScroll','scroll'],['optBg','bg']].forEach(([id,k])=>{
+[['optTitles','titles'],['optCaps','caps'],['optScroll','scroll'],['optBg','bg'],['optDim','dim']].forEach(([id,k])=>{
   const c=$('#'+id);c.checked=!!opts[k];
-  c.onchange=()=>{opts[k]=c.checked;saveSettings();if(k==='bg'){keepAwake(playing||sumPlaying)}else if(cur){buildQueue();renderToc()}};
+  c.onchange=()=>{opts[k]=c.checked;saveSettings();if(k==='bg'){keepAwake(playing||sumPlaying)}else if(k==='dim'){dim(playing||sumPlaying)}else if(cur){buildQueue();renderToc()}};
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
@@ -3698,7 +3741,9 @@ window.addEventListener('beforeunload',()=>{saveNow();if(synth)synth.cancel()});
 })();
 // phones pause speech when the screen locks or the app is switched: pick up the same sentence on return
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden||!playing||!synth) return;
+  if(document.hidden){undim();return}
+  if(playing||sumPlaying)keepAwake(true);
+  if(!playing||!synth) return;
   // the voice kept going in the background: leave it alone; otherwise pick up the same sentence
   if(PLATFORM!=='ios'&&synth.speaking&&Date.now()-lastSpeech<30000) return;
   setTimeout(()=>{if(!playing)return;token++;try{synth.cancel()}catch(_){}setTimeout(speak,150)},400);
