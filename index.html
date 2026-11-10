@@ -118,8 +118,23 @@ button,select,input,textarea{font:inherit;color:inherit}
 .hmenu span{font-size:14px;color:var(--muted)}
 .hmenu .fine{padding:4px 14px 8px;font-size:14px}
 .count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:14px;display:inline-grid;place-items:center;font-variant-numeric:tabular-nums}
-/* AI tools are switched off for now (see AI_ON); remove this line and set AI_ON=true to bring them back */
-#aiBtn,#aiDrawer{display:none!important}
+/* AI tools appear only where they can run: through the AI relay, or for the owner on the Claude link */
+body:not(.ai-on) #aiBtn,body:not(.ai-on) #aiDrawer{display:none!important}
+.sumcard{margin:18px 0 6px;border:1.5px solid var(--accent);border-radius:18px;padding:16px 18px;background:var(--sheet)}
+.sumcard .row{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.sumcard>p{margin:.2em 0 0;font-size:17px}
+.sum-body{margin-top:10px}
+.sum details,details.sum{margin:0}
+details.sum>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+details.sum>summary::-webkit-details-marker{display:none}
+details.sum>summary .plan-h{margin:0}
+details.sum>summary .fine::after{content:" · show"}
+details.sum[open]>summary .fine::after{content:" · hide"}
+.sum-err{color:var(--danger,#b3261e);font-weight:600}
+.ai-set{border-top:1px solid var(--line);margin-top:14px;padding-top:14px;display:grid;gap:8px}
+.ai-set b{font-size:17px}
+.ai-set input{height:46px;border-radius:12px;border:1.5px solid var(--line);background:var(--sheet);padding:0 12px;font-size:15px;width:100%;box-sizing:border-box}
+.ai-set .msg{font-weight:600;margin:0}
 body[data-view="library"] #contentsBtn,body[data-view="library"] #notesBtn,body[data-view="library"] #aiBtn,body[data-view="library"] #padBtn,body[data-view="library"] .player{display:none}
 @media (min-width:1180px){#contentsBtn{display:none}}
 
@@ -551,6 +566,16 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
     <label class="check"><input type="checkbox" id="optTitles" checked>Read section titles</label>
     <label class="check"><input type="checkbox" id="optCaps" checked>Read figure and table captions at the end</label>
     <label class="check"><input type="checkbox" id="optScroll" checked>Keep the current sentence in view</label>
+  </div>
+  <div class="ai-set" id="aiSet">
+    <b>AI summaries</b>
+    <p class="fine" id="aiSetState"></p>
+    <div class="fields">
+      <div class="field"><label for="relayUrl">Relay address</label><input id="relayUrl" type="url" inputmode="url" placeholder="https://your-relay.workers.dev" autocomplete="off" spellcheck="false"></div>
+      <div class="field"><label for="relayPass">Passcode</label><input id="relayPass" type="password" autocomplete="off" spellcheck="false"></div>
+    </div>
+    <div class="row"><button class="btn sm" id="relaySave" type="button">Save and test</button><button class="btn sm quiet" id="relayLink" type="button">Copy a setup link</button><button class="btn sm quiet" id="relayForget" type="button">Remove</button></div>
+    <p class="msg" id="relayMsg" role="status" hidden></p>
   </div>
   <div class="keys">
     <span><kbd>Space</kbd></span><span>Play or pause</span>
@@ -1677,6 +1702,7 @@ function decorate(sp){
   else if(has){const nb=el('button','note-btn');nb.type='button';nb.dataset.n=n;nb.setAttribute('aria-label','Open note');nb.innerHTML=NOTE_ICON;sp.after(nb)}
 }
 function render(){
+  stopSummary();if(sumCtl){sumCtl.abort();sumCtl=null}sumBusy=false;sumErr=null;sumOpen=false;
   const {doc,meta,state}=cur;
   const head=$('#docHead'),body=$('#docBody');head.innerHTML='';body.innerHTML='';
   head.append(el('p','eyebrow'+(meta.sample?' sample':''),meta.sample?'Sample paper, invented to show how this works':meta.label));
@@ -1695,6 +1721,7 @@ function render(){
   if(s.headers) chips.push(plural(s.headers,'page header or number','page headers and numbers'));
   if(s.front) chips.push(plural(s.front,'author or affiliation line'));
   if(s.labels) chips.push(plural(s.labels,'stray figure label'));
+  head.append(el('div','sumcard'));
   head.append(el('div','plan'));
   if(chips.length){
     const d=el('details','skipping');
@@ -1792,6 +1819,7 @@ function setPlan(pl,quiet){
   if(!quiet){const m=minsFor(docChars(cur.doc,planOff()));setStatus((pl.mode==='full'?'Listening to the whole paper':pl.mode==='key'?'Listening to the key sections':'Listening to the sections you chose')+', about '+fmtMins(m)+'. Press Play to start.')}
 }
 function renderPlanCard(){
+  renderSumCard();
   const box=$('#docHead .plan');if(!box||!cur) return;
   box.innerHTML='';
   const all=planSecs(),pl=cur.state.plan||(cur.state.pos>0?{mode:'full'}:null); // papers already started just read on
@@ -1945,6 +1973,7 @@ function startSpeaking(){
   if(synth.speaking||synth.pending){synth.cancel();setTimeout(speak,80)} else speak();
 }
 function play(){
+  stopSummary();
   if(!synth){setStatus('This browser can’t read aloud. Open the page in Microsoft Edge.',true);return}
   if(!queue.length) return;
   if(idx>=queue.length) idx=0;
@@ -2038,7 +2067,7 @@ function renderNotes(){
     li.append(el('p','ntext ai-prev',prev.slice(0,260)+(prev.length>260?'…':'')));
     const row=el('div','row');const open=el('button','btn sm','Open');
     open.onclick=()=>{openDrawer('aiDrawer',$('#aiBtn'));aiKind=k;renderAiPanel()};
-    if(AI_ON)row.append(open);li.append(row);al.append(li);
+    if(aiReady)row.append(open);li.append(row);al.append(li);
   }
   const list=$('#notesList');list.innerHTML='';
   for(const g of groups){
@@ -2380,15 +2409,98 @@ const AI_KINDS={
   related:{title:'Related papers',file:'related papers'}
 };
 let sampleFn=null,aiReady=false,aiKind=null,aiCtl=null,aiBusy=false,aiWhy=null;
+function aiShow(on){document.body.classList.toggle('ai-on',!!on);if(cur){renderSumCard();renderNotes()}}
 function connectAi(){
-  if(!(window.claude&&typeof window.claude.use==='function')){aiWhy='nohost';return Promise.resolve(null)}
-  return window.claude.use('sample').then(f=>{sampleFn=f;aiReady=!!f;aiWhy=f?null:'noview';renderAiPanel();return f})
-    .catch(e=>{aiReady=false;aiWhy=(e&&e.code)||'noview';renderAiPanel();return null});
+  if(relay&&relay.url&&relay.pass){sampleFn=relaySample;aiReady=true;aiWhy=null;aiShow(true);renderAiPanel();return Promise.resolve(sampleFn)}
+  sampleFn=null;aiReady=false;
+  if(!(window.claude&&typeof window.claude.use==='function')){aiWhy='norelay';aiShow(false);return Promise.resolve(null)}
+  return window.claude.use('sample').then(f=>{sampleFn=f;aiReady=!!f;aiWhy=f?null:'norelay';aiShow(!!f);renderAiPanel();return f})
+    .catch(e=>{aiReady=false;aiWhy='norelay';aiShow(false);renderAiPanel();return null});
 }
-var AI_ON=false; // AI tools hidden for now: they only work for the owner on the Claude link
-if(AI_ON) connectAi();
+
+/* ---------- the AI relay: a small service (relay/worker.js) that holds the Claude API key ---------- */
+const RELAY_KEY='pol-relay';
+let relay=store.get(RELAY_KEY,null),relayFromLink=false;
+// a setup link (…#ai=…) carries the relay address and passcode, so nobody has to type them
+function readSetupHash(){
+  const m=/[#&]ai=([A-Za-z0-9_-]+)/.exec(location.hash||'');if(!m) return false;
+  try{const o=JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))));
+    if(o&&/^(?:https:\/\/|http:\/\/localhost[:/])/.test(o.u)&&o.p){relay={url:o.u.replace(/\/+$/,''),pass:String(o.p)};store.set(RELAY_KEY,relay);relayFromLink=true}}catch(_){}
+  try{history.replaceState(null,'',location.pathname+location.search)}catch(_){}
+  return relayFromLink;
+}
+readSetupHash();
+addEventListener('hashchange',()=>{if(readSetupHash()){renderRelaySet();connectAi();setStatus('AI summaries are set up on this device.')}});
+function relayErr(code,text){const e=new Error(code);e.code=code;if(text)e.text=text;return e}
+async function relayPost(path,body,r0,signal){
+  const r=r0||relay;let res;
+  try{res=await fetch(r.url.replace(/\/+$/,'')+path,{method:'POST',headers:{'Content-Type':'application/json','X-Passcode':r.pass},body:JSON.stringify(body||{}),signal,cache:'no-store'})}
+  catch(e){if(e&&e.name==='AbortError')throw relayErr('cancelled');throw relayErr('relay_offline')}
+  if(!res.ok){
+    let j={};try{j=await res.json()}catch(_){}
+    const t=j&&j.error;
+    throw relayErr(res.status===401?'wrong_passcode':res.status===429?'rate_limited':res.status===413?'prompt_too_large':
+      t==='relay_not_set_up'?'relay_not_set_up':t==='authentication_error'||t==='permission_error'?'relay_bad_key':t==='not_found_error'?'relay_bad_model':'relay_error');
+  }
+  return res;
+}
+// same shape as Claude's own sample(): (prompt,{signal,onText}) → {text,truncated}
+async function relaySample(prompt,opts){
+  opts=opts||{};
+  const res=await relayPost('/ask',{prompt,stream:true,max_tokens:opts.maxTokens||2500},null,opts.signal);
+  const rd=res.body.getReader(),dec=new TextDecoder();let buf='',text='',stop=null;
+  try{
+    for(;;){
+      const {done,value}=await rd.read();if(done) break;
+      buf+=dec.decode(value,{stream:true});
+      let i;
+      while((i=buf.indexOf('\n\n'))>=0){
+        const ev=buf.slice(0,i);buf=buf.slice(i+2);
+        const data=ev.split('\n').filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trim()).join('');
+        if(!data) continue;
+        let o;try{o=JSON.parse(data)}catch(_){continue}
+        if(o.type==='content_block_delta'&&o.delta&&o.delta.type==='text_delta'){text+=o.delta.text;if(opts.onText)opts.onText({text})}
+        else if(o.type==='message_delta'&&o.delta&&o.delta.stop_reason) stop=o.delta.stop_reason;
+        else if(o.type==='error') throw relayErr(o.error&&o.error.type==='overloaded_error'?'rate_limited':'relay_error',text);
+      }
+    }
+  }catch(e){if(e&&e.name==='AbortError')throw relayErr('cancelled');throw e&&e.code?e:relayErr('relay_error',text)}
+  if(stop==='refusal') throw relayErr('refused',text);
+  if(!text.trim()) throw relayErr('relay_error');
+  return {text,truncated:stop==='max_tokens'};
+}
+relaySample.json=async function(prompt,opts){
+  const res=await relaySample(prompt+'\n\nReply with the JSON object only, with no other text.',Object.assign({},opts,{onText:null}));
+  const m=res.text.match(/\{[\s\S]*\}/);
+  try{return JSON.parse(m[0])}catch(_){throw relayErr('invalid_json')}
+};
+const APP_HOME='https://mercury-mind.github.io/paper-out-loud/';
+function b64url(t){return btoa(unescape(encodeURIComponent(t))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function setupLink(){const base=/^https?:$/.test(location.protocol)&&!/claude/.test(location.hostname)?location.origin+location.pathname:APP_HOME;return base+'#ai='+b64url(JSON.stringify({u:relay.url,p:relay.pass}))}
+function relayMsg(t,bad){const m=$('#relayMsg');m.hidden=!t;m.textContent=t||'';m.style.color=bad?'var(--danger,#b3261e)':''}
+function renderRelaySet(){
+  $('#relayUrl').value=relay?relay.url:'';$('#relayPass').value=relay?relay.pass:'';
+  $('#aiSetState').textContent=relay?'Set up on this device: “Summarize, then read” appears at the top of each paper, and the AI button in the header.':
+    'Lets Claude summarize papers and make study notes. Enter the relay address and passcode you were given, or open the setup link you were sent.';
+  $('#relayForget').hidden=!relay;$('#relayLink').hidden=!relay;
+}
+$('#relaySave').onclick=async()=>{
+  const u=$('#relayUrl').value.trim().replace(/\/+$/,''),p=$('#relayPass').value;
+  if(!/^(?:https:\/\/[^\s/]+|http:\/\/localhost[:/])/.test(u)){relayMsg('The relay address should start with https://',true);return}
+  if(!p){relayMsg('Enter the passcode.',true);return}
+  relayMsg('Checking…');
+  try{await relayPost('/check',{},{url:u,pass:p});
+    relay={url:u,pass:p};store.set(RELAY_KEY,relay);await connectAi();renderRelaySet();relayMsg('Connected. AI summaries are ready.')}
+  catch(e){relayMsg(aiErrorText(e),true)}
+};
+$('#relayForget').onclick=()=>{relay=null;store.set(RELAY_KEY,null);connectAi();renderRelaySet();relayMsg('Removed from this device.')};
+$('#relayLink').onclick=()=>{if(relay)copyText(setupLink(),'Setup link copied. Opening it sets up AI summaries on any device. Treat it like a password.')};
+renderRelaySet();
+connectAi();
+if(relayFromLink) setTimeout(()=>setStatus('AI summaries are set up on this device.'),1200);
 // why AI can't be used right now, in words the viewer can act on
 function aiWhyText(){
+  if(aiWhy==='norelay') return 'AI isn’t set up on this device yet. Open Settings and enter the relay address and passcode under “AI summaries”, or open the setup link you were sent.';
   if(aiWhy==='nohost') return 'The AI tools only work on the Claude link to Paper Out Loud (the address starting with claude.ai), not on this copy. Open the Claude link in a browser where you are signed in to Claude.';
   if(aiWhy==='noview') return 'This page couldn’t connect to a Claude account. Open the Claude link in a web browser (Chrome, Edge or Safari) where you are signed in at claude.ai, then try again. If it still doesn’t work, your account or organization may not allow pages to use Claude.';
   return aiErrorText({code:aiWhy});
@@ -2435,6 +2547,12 @@ function buildPrompt(kind){
 }
 function aiErrorText(e){
   const c=e&&e.code;
+  if(c==='wrong_passcode') return 'The AI relay didn’t accept the passcode. Check it in Settings under “AI summaries”.';
+  if(c==='relay_offline') return 'Couldn’t reach the AI relay. Check your internet connection, and the relay address in Settings.';
+  if(c==='relay_not_set_up') return 'The AI relay is missing its API key or passcode. Whoever set it up needs to add them in Cloudflare.';
+  if(c==='relay_bad_key') return 'The AI relay’s Claude API key isn’t working (it may be wrong, used up, or out of credit). Whoever set it up should check console.anthropic.com.';
+  if(c==='relay_bad_model') return 'The AI relay asked for a Claude model that isn’t available. Whoever set it up should change MODEL in Cloudflare.';
+  if(c==='relay_error') return 'Something went wrong while asking Claude. Try again in a moment.';
   if(c==='not_granted') return 'AI isn’t available because permission to use Claude wasn’t given for this page. Reload the page and choose Allow when Claude asks. If no question appears, your organization may not allow it.';
   if(c==='sampling_disabled'||c==='not_declared'||c==='capability_disabled'||c==='capability_removed') return 'AI isn’t available for this Claude account, or in this view. Try opening the Claude link at claude.ai in a web browser while signed in.';
   if(c==='rate_limited') return 'You’ve reached a usage limit for now. Try again a little later.';
@@ -2444,8 +2562,8 @@ function aiErrorText(e){
   if(c==='refused') return 'Claude declined to answer this one.';
   return 'Something went wrong while asking Claude. Press “Make a new one” to try again.';
 }
-function renderAiText(text){
-  const body=$('#aiBody');body.innerHTML='';
+function renderAiText(text,body){
+  body=body||$('#aiBody');body.innerHTML='';
   let ul=null;
   for(const raw of String(text).replace(/\*\*/g,'').split('\n')){
     const line=raw.trim();
@@ -2581,6 +2699,96 @@ async function runAi(kind,fresh){
     body2.append(el('p','ai-thinking',aiErrorText(e)));
     const again=el('button','btn sm','Try again');again.onclick=()=>runAi(kind,true);body2.append(again);
   }finally{if(aiCtl===ctl)aiCtl=null}
+}
+/* ---------- “Summarize, then read”: a short summary read aloud, then the paper ---------- */
+var sumBusy=false,sumCtl=null,sumErr=null,sumTok=0,sumPlaying=false,sumOpen=false;
+function renderSumCard(){
+  const box=$('#docHead .sumcard');if(!box||!cur) return;
+  box.innerHTML='';
+  const saved=aiSaved('summary');
+  if(!aiReady&&!saved){box.hidden=true;return}
+  box.hidden=false;
+  if(sumBusy){
+    box.append(el('h2','plan-h','Summarizing…'));
+    box.append(el('p','ai-thinking','Claude is reading the paper and writing a short summary. This takes up to a minute; it will start reading as soon as it’s done.'));
+    const live=el('div','ai-body sum-body sum-live');box.append(live);
+    const row=el('div','row');const st=el('button','btn sm','Stop');st.type='button';st.onclick=()=>sumCtl&&sumCtl.abort();row.append(st);box.append(row);
+    return;
+  }
+  if(!saved){
+    box.append(el('h2','plan-h','Want the big picture first?'));
+    box.append(el('p',null,'Claude writes a short summary of this paper and reads it to you, then carries on with the paper itself.'));
+    if(sumErr) box.append(el('p','sum-err',sumErr));
+    const row=el('div','row');const go=el('button','btn primary',sumErr?'Try again':'Summarize, then read');go.type='button';go.onclick=()=>summarizeThenRead();
+    row.append(go);box.append(row);
+    return;
+  }
+  const d=el('details','sum');d.open=sumOpen||sumPlaying;d.addEventListener('toggle',()=>{sumOpen=d.open});
+  const sm=el('summary');sm.append(el('h2','plan-h','Summary'),el('span','fine','by Claude, '+rel(saved.at)));d.append(sm);
+  const body=el('div','ai-body sum-body');renderAiText(saved.text,body);d.append(body);
+  box.append(d);
+  const row=el('div','row');
+  if(sumPlaying){const st=el('button','btn primary','Stop the summary');st.type='button';st.onclick=()=>{stopSummary();setStatus('Stopped. Press Play to read the paper.')};row.append(st)}
+  else{
+    const a=el('button','btn primary','Play the summary, then the paper');a.type='button';a.onclick=()=>playSummary(true);
+    const b=el('button','btn sm quiet','Just the summary');b.type='button';b.onclick=()=>playSummary(false);
+    const c=el('button','btn sm quiet','Make a new one');c.type='button';c.onclick=()=>summarizeThenRead(true);
+    row.append(a,b,c);
+  }
+  box.append(row);
+}
+async function summarizeThenRead(fresh){
+  if(!cur) return;
+  if(!fresh&&aiSaved('summary')){playSummary(true);return}
+  if(!sampleFn){await connectAi();if(!sampleFn){sumErr=aiWhyText();renderSumCard();setStatus(sumErr,true);return}}
+  pause();stopSummary();
+  const paperId=cur.id,ctl=sumCtl=new AbortController();
+  sumBusy=true;sumErr=null;renderSumCard();setStatus('Summarizing the paper…');
+  try{
+    const res=await sampleFn(buildPrompt('summary'),{signal:ctl.signal,modelTier:'default',maxTokens:1500,cache:fresh?false:undefined,
+      onText:({text})=>{const live=$('#docHead .sum-live');if(live&&cur&&cur.id===paperId)renderAiText(text,live)}});
+    if(!cur||cur.id!==paperId) return;
+    cur.state.ai=cur.state.ai||{};cur.state.ai.summary={text:res.text,at:Date.now(),truncated:!!res.truncated};
+    scheduleSave();sumBusy=false;sumOpen=true;renderSumCard();renderNotes();if(aiKind==='summary')renderAiPanel();
+    playSummary(true);
+  }catch(e){
+    sumBusy=false;
+    if(e&&e.code==='cancelled'){sumErr=null;renderSumCard();setStatus('Stopped.');return}
+    sumErr=aiErrorText(e);renderSumCard();setStatus(sumErr,true);
+  }finally{if(sumCtl===ctl)sumCtl=null}
+}
+function stopSummary(){
+  if(!sumPlaying) return;
+  sumTok++;sumPlaying=false;if(synth)synth.cancel();
+  $$('#docHead .sum-body .on').forEach(x=>x.classList.remove('on'));renderSumCard();
+}
+function playSummary(thenPaper){
+  if(!synth){setStatus('This browser can’t read aloud. Open the page in Microsoft Edge.',true);return}
+  if(!aiSaved('summary')) return;
+  pause();stopAiSpeech();
+  sumPlaying=true;sumOpen=true;renderSumCard();
+  const blocks=$$('#docHead .sum-body .ai-b');
+  // one sentence per utterance: some voices stop partway through long passages
+  const parts=[];blocks.forEach(b=>{const t=b.textContent.trim();if(!t)return;(typeof splitSentences==='function'?splitSentences(t):[t]).forEach(x=>parts.push({b,t:x}))});
+  const my=++sumTok;let i=0;
+  setStatus(thenPaper?'Reading the summary. The paper follows.':'Reading the summary.');
+  const next=()=>{
+    if(my!==sumTok) return;
+    $$('#docHead .sum-body .on').forEach(x=>x.classList.remove('on'));
+    if(i>=parts.length){
+      sumPlaying=false;renderSumCard();
+      if(thenPaper){setStatus('That was the summary. Now the paper.');setTimeout(()=>{if(my===sumTok&&cur)play()},900)}
+      else setStatus('Finished the summary. Press Play to read the paper.');
+      return;
+    }
+    const pt=parts[i++];pt.b.classList.add('on');if(opts.scroll!==false)pt.b.scrollIntoView({block:'nearest',behavior:smooth()});
+    const u=new SpeechSynthesisUtterance(pt.t);
+    if(voice){u.voice=voice;u.lang=voice.lang}u.rate=rate;
+    u.onend=()=>next();
+    u.onerror=ev=>{if(ev.error==='interrupted'||ev.error==='canceled')return;stopSummary();setStatus('The voice stopped (error: '+(ev.error||'unknown')+'). Try another voice in Settings.',true)};
+    synth.speak(u);
+  };
+  if(synth.speaking||synth.pending){synth.cancel();setTimeout(next,80)}else next();
 }
 // read an AI answer aloud, block by block, with the same voice and speed
 let aiTok=0;
