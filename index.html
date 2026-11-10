@@ -566,6 +566,7 @@ kbd{font-family:inherit;font-size:13px;border:1.5px solid var(--line);border-bot
     <label class="check"><input type="checkbox" id="optTitles" checked>Read section titles</label>
     <label class="check"><input type="checkbox" id="optCaps" checked>Read figure and table captions at the end</label>
     <label class="check"><input type="checkbox" id="optScroll" checked>Keep the current sentence in view</label>
+    <label class="check"><input type="checkbox" id="optBg" checked>Keep reading when the screen turns off or the app is in the background (adds play and pause controls to the lock screen and headphones)</label>
   </div>
   <div class="ai-set" id="aiSet">
     <b>AI summaries</b>
@@ -1690,7 +1691,7 @@ function hashStr(s){let h=5381;for(let i=0;i<s.length;i++)h=(h*33)^s.charCodeAt(
 function blankState(id){return {id,pos:0,highlights:{},notes:{},include:{}}}
 
 /* ---------- rendering ---------- */
-const opts={titles:true,eq:true,caps:true,scroll:true};
+const opts={titles:true,eq:true,caps:true,scroll:true,bg:true};
 function spanOf(n){return document.querySelector('#docBody .s[data-n="'+n+'"]')}
 function decorate(sp){
   if(!sp) return;
@@ -1702,7 +1703,7 @@ function decorate(sp){
   else if(has){const nb=el('button','note-btn');nb.type='button';nb.dataset.n=n;nb.setAttribute('aria-label','Open note');nb.innerHTML=NOTE_ICON;sp.after(nb)}
 }
 function render(){
-  stopSummary();if(sumCtl){sumCtl.abort();sumCtl=null}sumBusy=false;sumErr=null;sumOpen=false;
+  stopSummary();if(sumCtl){sumCtl.abort();sumCtl=null}sumBusy=false;sumErr=null;sumOpen=false;sumKind=null;sumPick=false;
   const {doc,meta,state}=cur;
   const head=$('#docHead'),body=$('#docBody');head.innerHTML='';body.innerHTML='';
   head.append(el('p','eyebrow'+(meta.sample?' sample':''),meta.sample?'Sample paper, invented to show how this works':meta.label));
@@ -1939,8 +1940,9 @@ function speak(){
   if(voice){u.voice=voice;u.lang=voice.lang}
   u.rate=rate;
   const my=++token;
-  u.onstart=()=>{if(my===token)fails=0};
-  u.onend=()=>{if(my!==token||!playing)return;fails=0;if(idx<queue.length-1){idx++;speak()}else finish()};
+  lastSpeech=Date.now();
+  u.onstart=()=>{lastSpeech=Date.now();if(my===token)fails=0};
+  u.onend=()=>{lastSpeech=Date.now();if(my!==token||!playing)return;fails=0;if(idx<queue.length-1){idx++;speak()}else finish()};
   u.onerror=ev=>{
     if(my!==token)return;
     const code=ev.error||'unknown';
@@ -1968,6 +1970,57 @@ function fallbackVoice(cur){
   const pool=voices.filter(v=>v!==cur);
   return pool.find(v=>favs.has(v.name)&&v.localService)||pool.find(v=>v.localService&&v.lang.slice(0,2)===lang)||pool.find(v=>v.localService)||pool.find(v=>v.lang.slice(0,2)===lang)||null;
 }
+/* ---------- listening in the background ----------
+   Phones and browsers treat a page as "playing" only while an audio element is playing. While reading,
+   a near-silent track loops so the page keeps running with the screen off or the app in the background,
+   and the lock screen and headphone buttons control reading. */
+let bgAudio=null,bgUrl=null,lastSpeech=Date.now();
+function quietTrack(){
+  if(bgUrl) return bgUrl;
+  const rate=8000,n=rate*10,buf=new ArrayBuffer(44+n),v=new DataView(buf);
+  const str=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
+  str(0,'RIFF');v.setUint32(4,36+n,true);str(8,'WAVE');str(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,rate,true);v.setUint32(28,rate,true);v.setUint16(32,1,true);v.setUint16(34,8,true);str(36,'data');v.setUint32(40,n,true);
+  for(let i=0;i<n;i++) v.setUint8(44+i,128+(i%2?1:-1)); // far too quiet to hear, but not "silent", which phones ignore
+  bgUrl=URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+  return bgUrl;
+}
+function keepAwake(on){
+  on=on&&opts.bg&&PLATFORM!=='ios'; // on iPhones and iPads this would stop the voice instead
+  try{
+    if(on){
+      if(!bgAudio){bgAudio=new Audio(quietTrack());bgAudio.loop=true;bgAudio.volume=0.05;bgAudio.setAttribute('aria-hidden','true')}
+      if(bgAudio.paused) bgAudio.play().catch(()=>{});
+    } else if(bgAudio&&!bgAudio.paused) bgAudio.pause();
+  }catch(_){}
+  mediaInfo();
+}
+function mediaInfo(){
+  const ms=navigator.mediaSession;if(!ms) return;
+  try{
+    if(cur&&typeof MediaMetadata==='function'){
+      const S=queue[idx]&&queue[idx].closest('.sec');
+      ms.metadata=new MediaMetadata({title:cur.doc.title,artist:sumPlaying?'Summary':(S?S.dataset.name:'Paper Out Loud'),album:'Paper Out Loud'});
+    }
+    ms.playbackState=(playing||sumPlaying)?'playing':'paused';
+  }catch(_){}
+}
+(function(){
+  const ms=navigator.mediaSession;if(!ms) return;
+  const on=(a,f)=>{try{ms.setActionHandler(a,f)}catch(_){}};
+  on('play',()=>{if(!playing&&!sumPlaying)play()});
+  on('pause',()=>{if(sumPlaying)stopSummary();if(playing)pause()});
+  on('stop',()=>{if(sumPlaying)stopSummary();if(playing)pause()});
+  on('nexttrack',()=>nextSec());
+  on('previoustrack',()=>prevSec());
+  on('seekforward',()=>go(idx+1));
+  on('seekbackward',()=>go(idx-1));
+})();
+// if the system silenced the voice while in the background, start the sentence again
+setInterval(()=>{
+  if(!playing||!synth) return;
+  if(!synth.speaking&&!synth.pending&&Date.now()-lastSpeech>5000){lastSpeech=Date.now();token++;speak()}
+},2500);
 function startSpeaking(){
   // speak straight from the click when nothing is queued; a cancel first needs a moment to settle
   if(synth.speaking||synth.pending){synth.cancel();setTimeout(speak,80)} else speak();
@@ -1977,12 +2030,12 @@ function play(){
   if(!synth){setStatus('This browser can’t read aloud. Open the page in Microsoft Edge.',true);return}
   if(!queue.length) return;
   if(idx>=queue.length) idx=0;
-  playing=true;fails=0;updatePlay();token++;startSpeaking();
+  playing=true;fails=0;updatePlay();token++;lastSpeech=Date.now();keepAwake(true);startSpeaking();
   try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(l=>{lock=l}).catch(()=>{})}catch(_){}
 }
-function pause(){playing=false;token++;if(synth)synth.cancel();updatePlay();try{lock&&lock.release();lock=null}catch(_){}}
+function pause(){playing=false;token++;if(synth)synth.cancel();updatePlay();if(!sumPlaying)keepAwake(false);try{lock&&lock.release();lock=null}catch(_){}}
 function restart(){token++;fails=0;mark(true);startSpeaking()}
-function finish(){pause();setStatus('Finished reading. Click any sentence to hear it again.')}
+function finish(){pause();keepAwake(false);setStatus('Finished reading. Click any sentence to hear it again.')}
 function toggle(){playing?pause():play()}
 function go(i){if(!queue.length)return;idx=Math.max(0,Math.min(queue.length-1,i));playing?restart():mark(true)}
 function secOf(i){return queue[i]?queue[i].closest('.sec'):null}
@@ -1994,6 +2047,7 @@ function prevSec(){
   go(queue.findIndex(q=>q.closest('.sec')===ps));
 }
 function updatePlay(){
+  mediaInfo();
   $('#playBtn').setAttribute('aria-label',playing?'Pause':'Play');
   $('#playIcon').innerHTML=playing?'<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';
 }
@@ -2395,7 +2449,7 @@ function applySettingsObj(o){
   if(o.fs) fs=+o.fs;
   applyFs();
   $('#rate').value=rate;$('#rateOut').textContent=rate.toFixed(1)+'×';$('#speedVal').textContent=fmtRate(rate);
-  [['optTitles','titles'],['optCaps','caps'],['optScroll','scroll']].forEach(([id,k])=>{$('#'+id).checked=!!opts[k]});
+  [['optTitles','titles'],['optCaps','caps'],['optScroll','scroll'],['optBg','bg']].forEach(([id,k])=>{$('#'+id).checked=!!opts[k]});
   if(o.voice){saved.voice=o.voice;const i=voices.findIndex(v=>v.name===o.voice);if(i>=0)voice=voices[i]}
   if(voices.length) renderVoiceSelect();
   saveSettings();
@@ -2404,6 +2458,10 @@ function applySettingsObj(o){
 /* ---------- AI tools (Claude, through the viewer's own account) ---------- */
 const AI_KINDS={
   summary:{title:'Summary',file:'summary'},
+  'sum-quick':{title:'Quick overview',file:'quick overview'},
+  'sum-sections':{title:'Section-by-section summary',file:'section summary'},
+  'sum-plain':{title:'Summary in plain language',file:'plain summary'},
+  'sum-review':{title:'Literature review notes',file:'literature review notes'},
   notes:{title:'Study notes',file:'notes'},
   insights:{title:'Key insights',file:'key insights'},
   related:{title:'Related papers',file:'related papers'}
@@ -2513,6 +2571,10 @@ function showAiProblem(kind,msg){
 }
 const STYLE='You are helping a PhD candidate with low vision who listens to research papers read aloud. Write in plain, clear English that sounds natural when read aloud: no LaTeX, no math symbols (say them in words), no tables, no emoji, no bold or italics. Use only the paper below. Do not invent facts, numbers, authors or citations; if something is not in the paper, say it is not stated.\nFormat: a line starting with "## " is a section heading; a line starting with "- " is a bullet point; everything else is a plain paragraph. No other formatting.';
 const PROMPTS={
+  'sum-quick':'Give a quick overview of this paper that takes about one minute to read aloud (about 120 to 150 words), using exactly these sections:\n## In one sentence\n## The gist\n(one short paragraph: the question, what they did, and the main finding)',
+  'sum-sections':'Summarize this paper section by section. For each main section of the paper, in order, write a "## " heading with the section\'s name, then 2 to 4 sentences on what that section says, including key numbers. Skip references, acknowledgments and appendices. End with:\n## The main takeaway\n(2 or 3 sentences)',
+  'sum-plain':'Explain this paper in plain language for a smart reader outside the field, using exactly these sections:\n## What it is about\n## What they did\n## What they found\n## Why it matters\n## Words worth knowing\n(3 to 6 bullet points in the form "term: plain-language meaning")\nAvoid jargon; when a technical term is needed, explain it the first time. Each section is one short paragraph except the last.',
+  'sum-review':'Summarize this paper for a PhD student writing a literature review, using exactly these sections:\n## Citation\n(title; authors, year and venue if stated)\n## Research question\n## Theory or framework\n## Data and method\n(setting, sample, design)\n## Key findings\n(bullet points, with the important numbers)\n## Limitations\n## How it fits the literature\n(what it builds on or argues against, and what gap it fills)\n## Useful quotes or claims\n(2 or 3 short claims worth citing, in the authors\' words if possible, with page numbers if the text shows them)',
   summary:'Summarize this paper using exactly these sections:\n## In one sentence\n## What problem it tackles\n## How they approached it\n## What they found\n## Why it matters\nEach section is one short paragraph (2 to 4 sentences), except "In one sentence".',
   notes:'Create study notes for this paper using exactly these sections, in this order, with these exact headings:\n## Citation\n(title; authors, year and venue if stated)\n## Research question\n## Why it matters\n## Approach\n(data, methods, study design, as bullet points)\n## Key findings\n(bullet points; include the important numbers)\n## Limitations\n(bullet points, including ones the authors state)\n## Key terms\n(bullet points in the form "term: plain-language definition")\n## Questions to follow up\n(3 to 5 bullet points worth thinking about or asking an advisor)',
   insights:'List the key insights of this paper using exactly these sections:\n## Key insights\n(5 to 7 bullet points; each gives the insight in one sentence, then "Why it matters:" and one sentence)\n## What is new here\n(2 or 3 bullet points on what this paper adds beyond earlier work)\n## How strong is the evidence\n(one short paragraph)'
@@ -2700,77 +2762,103 @@ async function runAi(kind,fresh){
     const again=el('button','btn sm','Try again');again.onclick=()=>runAi(kind,true);body2.append(again);
   }finally{if(aiCtl===ctl)aiCtl=null}
 }
-/* ---------- “Summarize, then read”: a short summary read aloud, then the paper ---------- */
-var sumBusy=false,sumCtl=null,sumErr=null,sumTok=0,sumPlaying=false,sumOpen=false;
+/* ---------- summaries: choose a kind, make it, then listen when ready (and carry on with the paper if wanted) ---------- */
+const SUM_KINDS=[
+  {k:'sum-quick',name:'Quick overview',sub:'The gist in about a minute'},
+  {k:'summary',name:'Standard summary',sub:'Problem, approach, findings, why it matters · about 3 min'},
+  {k:'sum-sections',name:'Section by section',sub:'A few sentences on each part · about 5 to 8 min'},
+  {k:'sum-plain',name:'In plain language',sub:'No jargon; key terms explained · about 3 min'},
+  {k:'sum-review',name:'For a literature review',sub:'Question, method, findings, limits, how to cite · about 4 min'}
+];
+var sumBusy=false,sumCtl=null,sumErr=null,sumTok=0,sumPlaying=false,sumOpen=false,sumKind=null,sumPick=false;
+function sumMins(text){return fmtMins(minsFor(String(text).length))}
 function renderSumCard(){
   const box=$('#docHead .sumcard');if(!box||!cur) return;
   box.innerHTML='';
-  const saved=aiSaved('summary');
-  if(!aiReady&&!saved){box.hidden=true;return}
+  const made=SUM_KINDS.filter(x=>aiSaved(x.k));
+  if(!aiReady&&!made.length){box.hidden=true;return}
   box.hidden=false;
+  if(!sumKind||!aiSaved(sumKind)&&!sumBusy) sumKind=(cur.state.sumKind&&aiSaved(cur.state.sumKind))?cur.state.sumKind:(made[0]&&made[0].k)||null;
+  const info=SUM_KINDS.find(x=>x.k===sumKind);
   if(sumBusy){
-    box.append(el('h2','plan-h','Summarizing…'));
-    box.append(el('p','ai-thinking','Claude is reading the paper and writing a short summary. This takes up to a minute; it will start reading as soon as it’s done.'));
+    box.append(el('h2','plan-h','Making the '+(info?info.name.toLowerCase():'summary')+'…'));
+    box.append(el('p','ai-thinking','Claude is reading the paper. This takes up to a minute. It won’t start talking until you press Play.'));
     const live=el('div','ai-body sum-body sum-live');box.append(live);
     const row=el('div','row');const st=el('button','btn sm','Stop');st.type='button';st.onclick=()=>sumCtl&&sumCtl.abort();row.append(st);box.append(row);
     return;
   }
-  if(!saved){
-    box.append(el('h2','plan-h','Want the big picture first?'));
-    box.append(el('p',null,'Claude writes a short summary of this paper and reads it to you, then carries on with the paper itself.'));
+  // choosing a kind (nothing made yet, or "another kind")
+  if(!made.length||sumPick){
+    box.append(el('h2','plan-h',made.length?'Make another kind of summary':'Want the big picture first?'));
+    box.append(el('p',null,'Choose the kind of summary Claude should write. You can listen to it when it’s ready.'));
     if(sumErr) box.append(el('p','sum-err',sumErr));
-    const row=el('div','row');const go=el('button','btn primary',sumErr?'Try again':'Summarize, then read');go.type='button';go.onclick=()=>summarizeThenRead();
-    row.append(go);box.append(row);
+    const g=el('div','plan-opts');
+    for(const x of SUM_KINDS){
+      const b=el('button','plan-o');b.type='button';
+      b.append(el('b',null,x.name),el('span','plan-s',aiSaved(x.k)?'Already made: opens it':x.sub));
+      b.onclick=()=>{sumPick=false;sumErr=null;if(aiSaved(x.k)){sumKind=x.k;cur.state.sumKind=x.k;scheduleSave();sumOpen=true;renderSumCard()}else makeSummary(x.k)};
+      g.append(b);
+    }
+    box.append(g);
+    if(made.length){const c=el('button','btn sm quiet plan-cancel','Back to my summary');c.type='button';c.onclick=()=>{sumPick=false;renderSumCard()};box.append(c)}
     return;
   }
+  const saved=aiSaved(sumKind);
   const d=el('details','sum');d.open=sumOpen||sumPlaying;d.addEventListener('toggle',()=>{sumOpen=d.open});
-  const sm=el('summary');sm.append(el('h2','plan-h','Summary'),el('span','fine','by Claude, '+rel(saved.at)));d.append(sm);
+  const sm=el('summary');sm.append(el('h2','plan-h',info.name),el('span','fine','about '+sumMins(saved.text)+' to listen · by Claude, '+rel(saved.at)));d.append(sm);
   const body=el('div','ai-body sum-body');renderAiText(saved.text,body);d.append(body);
   box.append(d);
+  if(made.length>1){
+    const tabs=el('div','row');tabs.setAttribute('role','group');tabs.setAttribute('aria-label','Your summaries');
+    for(const x of made){const t=el('button','btn sm'+(x.k===sumKind?'':' quiet'),x.name);t.type='button';t.setAttribute('aria-pressed',x.k===sumKind?'true':'false');
+      t.onclick=()=>{if(sumPlaying)stopSummary();sumKind=x.k;cur.state.sumKind=x.k;scheduleSave();sumOpen=true;renderSumCard()};tabs.append(t)}
+    box.append(tabs);
+  }
   const row=el('div','row');
-  if(sumPlaying){const st=el('button','btn primary','Stop the summary');st.type='button';st.onclick=()=>{stopSummary();setStatus('Stopped. Press Play to read the paper.')};row.append(st)}
+  if(sumPlaying){const st=el('button','btn primary','Stop the summary');st.type='button';st.onclick=()=>{stopSummary();setStatus('Stopped.')};row.append(st)}
   else{
-    const a=el('button','btn primary','Play the summary, then the paper');a.type='button';a.onclick=()=>playSummary(true);
-    const b=el('button','btn sm quiet','Just the summary');b.type='button';b.onclick=()=>playSummary(false);
-    const c=el('button','btn sm quiet','Make a new one');c.type='button';c.onclick=()=>summarizeThenRead(true);
-    row.append(a,b,c);
+    const a=el('button','btn primary','Play the summary');a.type='button';a.onclick=()=>playSummary(false);
+    const b=el('button','btn','Play the summary, then the paper');b.type='button';b.onclick=()=>playSummary(true);
+    const o=el('button','btn sm quiet','Another kind of summary');o.type='button';o.onclick=()=>{sumPick=true;renderSumCard()};
+    const c=el('button','btn sm quiet','Make this one again');c.type='button';c.onclick=()=>makeSummary(sumKind,true);
+    row.append(a,b,o,c);
   }
   box.append(row);
 }
-async function summarizeThenRead(fresh){
+async function makeSummary(kind,fresh){
   if(!cur) return;
-  if(!fresh&&aiSaved('summary')){playSummary(true);return}
-  if(!sampleFn){await connectAi();if(!sampleFn){sumErr=aiWhyText();renderSumCard();setStatus(sumErr,true);return}}
-  pause();stopSummary();
+  if(!sampleFn){await connectAi();if(!sampleFn){sumErr=aiWhyText();sumPick=true;renderSumCard();setStatus(sumErr,true);return}}
+  stopSummary();
   const paperId=cur.id,ctl=sumCtl=new AbortController();
-  sumBusy=true;sumErr=null;renderSumCard();setStatus('Summarizing the paper…');
+  sumBusy=true;sumKind=kind;sumErr=null;renderSumCard();setStatus('Making the summary…');
   try{
-    const res=await sampleFn(buildPrompt('summary'),{signal:ctl.signal,modelTier:'default',maxTokens:1500,cache:fresh?false:undefined,
+    const res=await sampleFn(buildPrompt(kind),{signal:ctl.signal,modelTier:'default',maxTokens:kind==='sum-quick'?600:2500,cache:fresh?false:undefined,
       onText:({text})=>{const live=$('#docHead .sum-live');if(live&&cur&&cur.id===paperId)renderAiText(text,live)}});
     if(!cur||cur.id!==paperId) return;
-    cur.state.ai=cur.state.ai||{};cur.state.ai.summary={text:res.text,at:Date.now(),truncated:!!res.truncated};
-    scheduleSave();sumBusy=false;sumOpen=true;renderSumCard();renderNotes();if(aiKind==='summary')renderAiPanel();
-    playSummary(true);
+    cur.state.ai=cur.state.ai||{};cur.state.ai[kind]={text:res.text,at:Date.now(),truncated:!!res.truncated};cur.state.sumKind=kind;
+    scheduleSave();sumBusy=false;sumOpen=true;renderSumCard();renderNotes();if(aiKind===kind)renderAiPanel();
+    setStatus('Your summary is ready. Press “Play the summary” when you want to hear it.');
+    const p=$('#docHead .sumcard .btn.primary');if(p)p.focus();
   }catch(e){
     sumBusy=false;
-    if(e&&e.code==='cancelled'){sumErr=null;renderSumCard();setStatus('Stopped.');return}
-    sumErr=aiErrorText(e);renderSumCard();setStatus(sumErr,true);
+    if(e&&e.code==='cancelled'){sumErr=null;if(!aiSaved(kind))sumKind=null;renderSumCard();setStatus('Stopped.');return}
+    sumErr=aiErrorText(e);sumPick=true;if(!aiSaved(kind))sumKind=null;renderSumCard();setStatus(sumErr,true);
   }finally{if(sumCtl===ctl)sumCtl=null}
 }
 function stopSummary(){
   if(!sumPlaying) return;
-  sumTok++;sumPlaying=false;if(synth)synth.cancel();
+  sumTok++;sumPlaying=false;if(synth)synth.cancel();if(!playing)keepAwake(false);
   $$('#docHead .sum-body .on').forEach(x=>x.classList.remove('on'));renderSumCard();
 }
 function playSummary(thenPaper){
   if(!synth){setStatus('This browser can’t read aloud. Open the page in Microsoft Edge.',true);return}
-  if(!aiSaved('summary')) return;
+  if(!sumKind||!aiSaved(sumKind)) return;
   pause();stopAiSpeech();
-  sumPlaying=true;sumOpen=true;renderSumCard();
+  sumPlaying=true;sumOpen=true;renderSumCard();keepAwake(true);
   const blocks=$$('#docHead .sum-body .ai-b');
   // one sentence per utterance: some voices stop partway through long passages
   const parts=[];blocks.forEach(b=>{const t=b.textContent.trim();if(!t)return;(typeof splitSentences==='function'?splitSentences(t):[t]).forEach(x=>parts.push({b,t:x}))});
-  const my=++sumTok;let i=0;
+  const my=++sumTok;let i=0,last=Date.now();
   setStatus(thenPaper?'Reading the summary. The paper follows.':'Reading the summary.');
   const next=()=>{
     if(my!==sumTok) return;
@@ -2778,16 +2866,20 @@ function playSummary(thenPaper){
     if(i>=parts.length){
       sumPlaying=false;renderSumCard();
       if(thenPaper){setStatus('That was the summary. Now the paper.');setTimeout(()=>{if(my===sumTok&&cur)play()},900)}
-      else setStatus('Finished the summary. Press Play to read the paper.');
+      else{keepAwake(false);setStatus('Finished the summary. Press Play to read the paper.')}
       return;
     }
     const pt=parts[i++];pt.b.classList.add('on');if(opts.scroll!==false)pt.b.scrollIntoView({block:'nearest',behavior:smooth()});
     const u=new SpeechSynthesisUtterance(pt.t);
     if(voice){u.voice=voice;u.lang=voice.lang}u.rate=rate;
-    u.onend=()=>next();
+    last=Date.now();
+    u.onstart=()=>{last=Date.now()};
+    u.onend=()=>{last=Date.now();next()};
     u.onerror=ev=>{if(ev.error==='interrupted'||ev.error==='canceled')return;stopSummary();setStatus('The voice stopped (error: '+(ev.error||'unknown')+'). Try another voice in Settings.',true)};
     synth.speak(u);
   };
+  // if the system silenced the voice in the background, say the same sentence again
+  const watch=setInterval(()=>{if(my!==sumTok||!sumPlaying){clearInterval(watch);return}if(!synth.speaking&&!synth.pending&&Date.now()-last>5000&&i>0){i--;last=Date.now();next()}},2500);
   if(synth.speaking||synth.pending){synth.cancel();setTimeout(next,80)}else next();
 }
 // read an AI answer aloud, block by block, with the same voice and speed
@@ -3538,9 +3630,9 @@ $('#voiceTest').onclick=()=>{
 function changeFs(step){fs=Math.min(44,Math.max(16,curFs()+step));applyFs();saveSettings();if(queue[idx])queue[idx].scrollIntoView({block:'center'});setStatus('Text size '+Math.round(curFs())+' px.')}
 $('#bigger').onclick=()=>changeFs(2);$('#smaller').onclick=()=>changeFs(-2);
 $('#pBigger').onclick=()=>changeFs(2);$('#pSmaller').onclick=()=>changeFs(-2);
-[['optTitles','titles'],['optCaps','caps'],['optScroll','scroll']].forEach(([id,k])=>{
+[['optTitles','titles'],['optCaps','caps'],['optScroll','scroll'],['optBg','bg']].forEach(([id,k])=>{
   const c=$('#'+id);c.checked=!!opts[k];
-  c.onchange=()=>{opts[k]=c.checked;saveSettings();if(cur){buildQueue();renderToc()}};
+  c.onchange=()=>{opts[k]=c.checked;saveSettings();if(k==='bg'){keepAwake(playing||sumPlaying)}else if(cur){buildQueue();renderToc()}};
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
@@ -3593,7 +3685,9 @@ window.addEventListener('beforeunload',()=>{saveNow();if(synth)synth.cancel()});
 // phones pause speech when the screen locks or the app is switched: pick up the same sentence on return
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden||!playing||!synth) return;
-  setTimeout(()=>{if(!playing)return;token++;try{synth.cancel()}catch(_){}setTimeout(speak,150)},400); // always restart the sentence: iOS can leave speech paused
+  // the voice kept going in the background: leave it alone; otherwise pick up the same sentence
+  if(PLATFORM!=='ios'&&synth.speaking&&Date.now()-lastSpeech<30000) return;
+  setTimeout(()=>{if(!playing)return;token++;try{synth.cancel()}catch(_){}setTimeout(speak,150)},400);
 });
 
 /* ---------- start ---------- */
