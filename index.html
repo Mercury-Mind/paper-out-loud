@@ -2782,15 +2782,25 @@ function renderSumCard(){
   const info=SUM_KINDS.find(x=>x.k===sumKind);
   if(sumBusy){
     box.append(el('h2','plan-h','Making the '+(info?info.name.toLowerCase():'summary')+'…'));
-    box.append(el('p','ai-thinking','Claude is reading the paper. This takes up to a minute. It won’t start talking until you press Play.'));
+    box.append(el('p','ai-thinking','Claude is reading the paper. This takes up to a minute. When it’s done, you’ll see a button to read it.'));
     const live=el('div','ai-body sum-body sum-live');box.append(live);
     const row=el('div','row');const st=el('button','btn sm','Stop');st.type='button';st.onclick=()=>sumCtl&&sumCtl.abort();row.append(st);box.append(row);
     return;
   }
-  // choosing a kind (nothing made yet, or "another kind")
-  if(!made.length||sumPick){
-    box.append(el('h2','plan-h',made.length?'Make another kind of summary':'Want the big picture first?'));
-    box.append(el('p',null,'Choose the kind of summary Claude should write. You can listen to it when it’s ready.'));
+  const readAll=(cls)=>{const r=el('button','btn'+(cls?' '+cls:''),'Read the entire paper');r.type='button';r.onclick=()=>{stopSummary();const pl=cur.state.plan;if(!pl||pl.mode!=='full')setPlan({mode:'full'},true);idx=0;play()};return r};
+  // start: two clear choices
+  if(!made.length&&!sumPick){
+    box.append(el('h2','plan-h','How would you like to start?'));
+    if(sumErr) box.append(el('p','sum-err',sumErr));
+    const row=el('div','row');
+    const go=el('button','btn primary','Summarize the paper');go.type='button';go.onclick=()=>{sumPick=true;sumErr=null;renderSumCard();const f=$('#docHead .sumcard .plan-o');if(f)f.focus()};
+    row.append(go,readAll());box.append(row);
+    return;
+  }
+  // choosing a kind of summary
+  if(sumPick){
+    box.append(el('h2','plan-h','What kind of summary?'));
+    box.append(el('p',null,'Choose one. Claude writes it in about a minute, then you can read it.'));
     if(sumErr) box.append(el('p','sum-err',sumErr));
     const g=el('div','plan-opts');
     for(const x of SUM_KINDS){
@@ -2800,7 +2810,7 @@ function renderSumCard(){
       g.append(b);
     }
     box.append(g);
-    if(made.length){const c=el('button','btn sm quiet plan-cancel','Back to my summary');c.type='button';c.onclick=()=>{sumPick=false;renderSumCard()};box.append(c)}
+    const c=el('button','btn sm quiet plan-cancel',made.length?'Back to my summary':'Cancel');c.type='button';c.onclick=()=>{sumPick=false;sumErr=null;renderSumCard()};box.append(c);
     return;
   }
   const saved=aiSaved(sumKind);
@@ -2817,17 +2827,21 @@ function renderSumCard(){
   const row=el('div','row');
   if(sumPlaying){const st=el('button','btn primary','Stop the summary');st.type='button';st.onclick=()=>{stopSummary();setStatus('Stopped.')};row.append(st)}
   else{
-    const a=el('button','btn primary','Play the summary');a.type='button';a.onclick=()=>playSummary(false);
-    const b=el('button','btn','Play the summary, then the paper');b.type='button';b.onclick=()=>playSummary(true);
-    const o=el('button','btn sm quiet','Another kind of summary');o.type='button';o.onclick=()=>{sumPick=true;renderSumCard()};
-    const c=el('button','btn sm quiet','Make this one again');c.type='button';c.onclick=()=>makeSummary(sumKind,true);
-    row.append(a,b,o,c);
+    const a=el('button','btn primary','Read the summary');a.type='button';a.onclick=()=>playSummary(false);
+    const b=el('button','btn','Read the summary, then the paper');b.type='button';b.onclick=()=>playSummary(true);
+    row.append(a,b,readAll());
   }
   box.append(row);
+  if(!sumPlaying){
+    const r2=el('div','row');
+    const o=el('button','btn sm quiet','Another kind of summary');o.type='button';o.onclick=()=>{sumPick=true;renderSumCard()};
+    const c=el('button','btn sm quiet','Write this one again');c.type='button';c.onclick=()=>makeSummary(sumKind,true);
+    r2.append(o,c);box.append(r2);
+  }
 }
 async function makeSummary(kind,fresh){
   if(!cur) return;
-  if(!sampleFn){await connectAi();if(!sampleFn){sumErr=aiWhyText();sumPick=true;renderSumCard();setStatus(sumErr,true);return}}
+  if(!sampleFn){await connectAi();if(!sampleFn){sumErr=aiWhyText();sumPick=false;renderSumCard();setStatus(sumErr,true);return}}
   stopSummary();
   const paperId=cur.id,ctl=sumCtl=new AbortController();
   sumBusy=true;sumKind=kind;sumErr=null;renderSumCard();setStatus('Making the summary…');
@@ -2837,12 +2851,12 @@ async function makeSummary(kind,fresh){
     if(!cur||cur.id!==paperId) return;
     cur.state.ai=cur.state.ai||{};cur.state.ai[kind]={text:res.text,at:Date.now(),truncated:!!res.truncated};cur.state.sumKind=kind;
     scheduleSave();sumBusy=false;sumOpen=true;renderSumCard();renderNotes();if(aiKind===kind)renderAiPanel();
-    setStatus('Your summary is ready. Press “Play the summary” when you want to hear it.');
+    setStatus('Your summary is ready. Press “Read the summary” to hear it.');
     const p=$('#docHead .sumcard .btn.primary');if(p)p.focus();
   }catch(e){
     sumBusy=false;
     if(e&&e.code==='cancelled'){sumErr=null;if(!aiSaved(kind))sumKind=null;renderSumCard();setStatus('Stopped.');return}
-    sumErr=aiErrorText(e);sumPick=true;if(!aiSaved(kind))sumKind=null;renderSumCard();setStatus(sumErr,true);
+    sumErr=aiErrorText(e);sumPick=false;if(!aiSaved(kind))sumKind=null;renderSumCard();setStatus(sumErr,true);
   }finally{if(sumCtl===ctl)sumCtl=null}
 }
 function stopSummary(){
